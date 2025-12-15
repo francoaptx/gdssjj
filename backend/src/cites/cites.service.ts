@@ -1,7 +1,7 @@
 // src/cites/cites.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm'; // Importar Like
+import { Repository, Like } from 'typeorm';
 import { Cite } from './entities/cite.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -13,6 +13,7 @@ export class CitesService {
     private citesRepository: Repository<Cite>,
     private usersService: UsersService, // Inyectar UsersService
   ) {}
+
 
   async create(userId: number, citeData: Omit<Cite, 'id' | 'number' | 'isUploaded' | 'createdAt' | 'uploadedAt' | 'createdBy'>): Promise<Cite> {
     const user = await this.usersService.findOne(userId); // Valida que el usuario exista
@@ -63,17 +64,14 @@ export class CitesService {
   }
 
   async markAsUploaded(id: number): Promise<Cite> {
-    const cite = await this.findOne(id); // Throws NotFoundException if not found
-    if (cite.isUploaded) {
-      throw new BadRequestException('Cite is already marked as uploaded.');
-    }
+    const cite = await this.findOne(id);
     cite.isUploaded = true;
     cite.uploadedAt = new Date();
     return this.citesRepository.save(cite);
   }
 
   async remove(id: number): Promise<void> {
-    const cite = await this.findOne(id); // Throws NotFoundException if not found
+    const cite = await this.findOne(id);
     await this.citesRepository.remove(cite);
   }
 }

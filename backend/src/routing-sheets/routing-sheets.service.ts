@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import { RoutingSheet } from './entities/routing-sheet.entity';
 import { CreateRoutingSheetDto } from './dto/create-routing-sheet.dto';
 import { UpdateRoutingSheetDto } from './dto/update-routing-sheet.dto';
@@ -45,18 +45,62 @@ export class RoutingSheetsService {
       }
     }
 
-    // Generar número de hoja de ruta único (ejemplo básico)
+    // Si tiene cite pero no se proporcionó un citeId, crear un nuevo cite
+    if (createRoutingSheetDto.hasCite && !cite) {
+      // Generar número de cite único secuencial
+      const currentDate = new Date();
+      const year = currentDate.getFullYear();
+      
+      // Contar cites existentes este año para generar el siguiente número
+      const count = await this.citesRepository.count({
+        where: {
+          createdAt: MoreThanOrEqual(new Date(year, 0, 1))
+        }
+      });
+      
+      // Formato: HR-CITE-XXXX-YYYY (XXXX es número secuencial, YYYY es el año)
+      const citeNumber = `HR-CITE-${String(count + 1).padStart(4, '0')}-${year}`;
+      
+      cite = this.citesRepository.create({
+        number: citeNumber,
+        subject: createRoutingSheetDto.reference,
+        createdBy: sender,
+        isUploaded: false, // Initially not uploaded
+        createdAt: new Date(),
+      });
+      cite = await this.citesRepository.save(cite);
+    }
+
+    // Generar número de hoja de ruta único
     const currentDate = new Date();
     const year = currentDate.getFullYear();
-    const count = await this.routingSheetsRepository.count();
-    const number = `HR-${String(count + 1).padStart(3, '0')}-${year}`;
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const count = await this.routingSheetsRepository.count({
+      where: {
+        createdAt: MoreThanOrEqual(new Date(year, 0, 1))
+      }
+    });
+    let number = `HR-${year}-${month}-${String(count + 1).padStart(4, '0')}`;
+
+    // Verificar que el número sea único (en caso de colisión)
+    let existingSheet = await this.routingSheetsRepository.findOne({ where: { number } });
+    let counter = 1;
+    while (existingSheet) {
+      const altNumber = `HR-${year}-${month}-${String(count + counter).padStart(4, '0')}`;
+      existingSheet = await this.routingSheetsRepository.findOne({ where: { number: altNumber } });
+      if (!existingSheet) {
+        number = altNumber;
+        break;
+      }
+      counter++;
+    }
 
     // Crear la hoja de ruta
     const routingSheet = this.routingSheetsRepository.create({
       number,
       reference: createRoutingSheetDto.reference,
       provision: createRoutingSheetDto.provision,
-      date: createRoutingSheetDto.date,
+      date: createRoutingSheetDto.date || new Date(),
       attachments: createRoutingSheetDto.attachments,
       sender,
       recipient,
@@ -64,7 +108,7 @@ export class RoutingSheetsService {
       numberOfPages: createRoutingSheetDto.numberOfPages,
       numberOfAttachments: createRoutingSheetDto.numberOfAttachments,
       priority: createRoutingSheetDto.priority,
-      hasCite: !!cite,
+      hasCite: createRoutingSheetDto.hasCite,
       status: 'PENDING',
       createdAt: new Date(),
     });

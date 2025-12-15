@@ -2,6 +2,16 @@
   <div class="office-management">
     <h2>Gestión de Oficinas</h2>
     
+    <!-- Mostrar estado de carga -->
+    <div v-if="loading" class="alert alert-info">
+      Cargando oficinas...
+    </div>
+    
+    <!-- Mostrar errores -->
+    <div v-if="error" class="alert alert-danger">
+      {{ error }}
+    </div>
+    
     <!-- Formulario para crear/editar oficinas -->
     <div class="form-section">
       <h3>{{ editingOffice ? 'Editar Oficina' : 'Crear Nueva Oficina' }}</h3>
@@ -26,6 +36,7 @@
             type="button" 
             @click="cancelEdit" 
             class="btn btn-secondary"
+            :disabled="loading"
           >
             Cancelar
           </button>
@@ -36,7 +47,10 @@
     <!-- Lista de oficinas -->
     <div class="list-section">
       <h3>Lista de Oficinas</h3>
-      <table class="table">
+      <div v-if="offices.length === 0 && !loading" class="alert alert-warning">
+        No se encontraron oficinas.
+      </div>
+      <table v-else class="table">
         <thead>
           <tr>
             <th>ID</th>
@@ -49,8 +63,8 @@
             <td>{{ office.id }}</td>
             <td>{{ office.name }}</td>
             <td>
-              <button @click="editOffice(office)" class="btn btn-sm btn-warning">Editar</button>
-              <button @click="deleteOffice(office.id)" class="btn btn-sm btn-danger">Eliminar</button>
+              <button @click="editOffice(office)" class="btn btn-sm btn-warning" :disabled="loading">Editar</button>
+              <button @click="deleteOffice(office.id)" class="btn btn-sm btn-danger" :disabled="loading">Eliminar</button>
             </td>
           </tr>
         </tbody>
@@ -71,36 +85,61 @@ export default {
       name: ''
     });
     const editingOffice = ref(null);
+    const loading = ref(false);
+    const error = ref(null);
 
     const fetchOffices = async () => {
+      loading.value = true;
+      error.value = null;
       try {
+        console.log('Fetching offices...');
         const response = await apiClient.get('/offices');
+        console.log('Offices fetched successfully:', response.data);
         offices.value = response.data;
       } catch (err) {
         console.error('Error fetching offices:', err);
-        alert('Error al cargar las oficinas.');
+        console.error('Error response:', err.response);
+        error.value = 'Error al cargar las oficinas: ' + (err.response?.data?.message || err.message);
+        alert(error.value);
+      } finally {
+        loading.value = false;
       }
     };
 
     const saveOffice = async () => {
+      if (!officeForm.value.name.trim()) {
+        alert('Por favor ingrese un nombre para la oficina');
+        return;
+      }
+
       try {
         if (editingOffice.value) {
           // Actualizar oficina existente
-          await apiClient.patch(`/offices/${editingOffice.value.id}`, officeForm.value);
+          console.log('Updating office:', editingOffice.value.id, officeForm.value);
+          await apiClient.put(`/offices/${editingOffice.value.id}`, { name: officeForm.value.name.trim() });
           alert('Oficina actualizada exitosamente.');
         } else {
           // Crear nueva oficina
-          await apiClient.post('/offices', officeForm.value);
+          console.log('Creating new office:', officeForm.value);
+          await apiClient.post('/offices', { name: officeForm.value.name.trim() });
           alert('Oficina creada exitosamente.');
         }
         
         // Resetear formulario y refrescar lista
         officeForm.value = { name: '' };
         editingOffice.value = null;
-        fetchOffices();
+        await fetchOffices();
       } catch (err) {
         console.error('Error saving office:', err);
-        alert('Error al guardar la oficina.');
+        if (err.response && err.response.status === 400) {
+          alert('Error: ' + err.response.data.message);
+        } else if (err.response && err.response.status === 401) {
+          alert('Error de autenticación. Por favor inicie sesión nuevamente.');
+        } else if (err.response && err.response.status === 403) {
+          alert('No tiene permisos para realizar esta acción.');
+        } else {
+          alert('Error al guardar la oficina: ' + (err.response?.data?.message || err.message));
+        }
       }
     };
 
@@ -120,10 +159,17 @@ export default {
       try {
         await apiClient.delete(`/offices/${id}`);
         alert('Oficina eliminada exitosamente.');
-        fetchOffices();
+        await fetchOffices();
       } catch (err) {
         console.error('Error deleting office:', err);
-        alert('Error al eliminar la oficina. Puede tener usuarios asociados.');
+        if (err.response && err.response.status === 404) {
+          alert('Error: Oficina no encontrada.');
+        } else if (err.response && err.response.status === 409) {
+          // Conflict - oficina tiene usuarios asociados
+          alert('No se puede eliminar la oficina porque tiene usuarios asociados.');
+        } else {
+          alert('Error al eliminar la oficina: ' + (err.response?.data?.message || err.message));
+        }
       }
     };
 
@@ -133,6 +179,8 @@ export default {
       offices,
       officeForm,
       editingOffice,
+      loading,
+      error,
       saveOffice,
       editOffice,
       cancelEdit,
@@ -206,5 +254,30 @@ export default {
 .btn-sm {
   padding: 0.2rem 0.4rem;
   font-size: 0.75rem;
+}
+
+.alert {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+.alert-info {
+  color: #0c5460;
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+}
+
+.alert-warning {
+  color: #856404;
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+}
+
+.alert-danger {
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
 }
 </style>

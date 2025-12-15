@@ -1,172 +1,366 @@
 <!-- src/components/RoutingSheetDetail.vue -->
 <template>
-  <div class="routing-sheet-detail">
-    <h2>Detalle de Hoja de Ruta: {{ routingSheet?.number }}</h2>
-    <div v-if="routingSheet">
-      <div class="detail-section">
-        <h3>Datos Generales</h3>
-        <p><strong>Remitente:</strong> {{ routingSheet.sender.name }}</p>
-        <p><strong>Destinatario:</strong> {{ routingSheet.recipient.name }}</p>
-        <p><strong>Referencia:</strong> {{ routingSheet.reference }}</p>
-        <p><strong>Proveído:</strong> {{ routingSheet.provision }}</p>
-        <p><strong>Nº de Hojas:</strong> {{ routingSheet.numberOfPages || 'N/A' }}</p>
-        <p><strong>Nº de Anexos:</strong> {{ routingSheet.numberOfAttachments || 'N/A' }}</p>
-        <p><strong>Estado:</strong> <span :class="`status status-${routingSheet.status.toLowerCase()}`">{{ routingSheet.status }}</span></p>
-        <p><strong>Fecha Creación:</strong> {{ formatDate(routingSheet.createdAt) }}</p>
-        <p><strong>Fecha Recepción:</strong> {{ routingSheet.receivedAt ? formatDate(routingSheet.receivedAt) : 'N/A' }}</p>
-        <p><strong>Fecha Procesamiento:</strong> {{ routingSheet.processedAt ? formatDate(routingSheet.processedAt) : 'N/A' }}</p>
-        <p><strong>Fecha Archivado:</strong> {{ routingSheet.archivedAt ? formatDate(routingSheet.archivedAt) : 'N/A' }}</p>
-        <p><strong>Fecha Cancelación:</strong> {{ routingSheet.cancelledAt ? formatDate(routingSheet.cancelledAt) : 'N/A' }}</p>
-        <p><strong>Carpeta de Archivo:</strong> {{ routingSheet.archivedFolder?.name || 'N/A' }}</p>
-        <p><strong>Tiene Cite:</strong> {{ routingSheet.hasCite ? 'Sí' : 'No' }}</p>
-        <p v-if="routingSheet.cite"><strong>Cite Asociado:</strong> {{ routingSheet.cite.number }} - {{ routingSheet.cite.reference }}</p>
+  <div class="routing-sheet-detail" v-if="routingSheet">
+    <div class="header">
+      <h2>Hoja de Ruta #{{ routingSheet.number }}</h2>
+      <router-link to="/routing-sheets" class="btn btn-secondary">Volver</router-link>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>Información Básica</h3>
+        <div class="info-item">
+          <label>Referencia:</label>
+          <span>{{ routingSheet.reference }}</span>
+        </div>
+        <div class="info-item">
+          <label>Fecha de Creación:</label>
+          <span>{{ formatDate(routingSheet.createdAt) }}</span>
+        </div>
+        <div class="info-item">
+          <label>Estado:</label>
+          <span :class="['status-badge', routingSheet.status.toLowerCase()]">
+            {{ getStatusText(routingSheet.status) }}
+          </span>
+        </div>
+        <div class="info-item">
+          <label>Prioridad:</label>
+          <span :class="['priority-badge', routingSheet.priority.toLowerCase()]">
+            {{ getPriorityText(routingSheet.priority) }}
+          </span>
+        </div>
       </div>
 
-      
-
-      <div class="detail-section">
-        <h3>Copias Enviadas</h3>
-        <ul v-if="routingSheet.copies && routingSheet.copies.length > 0">
-          <li v-for="copy in routingSheet.copies" :key="copy.id">
-            {{ copy.recipient.name }} - {{ copy.provision }}
-          </li>
-        </ul>
-        <p v-else>No se enviaron copias.</p>
+      <div class="info-card">
+        <h3>Participantes</h3>
+        <div class="info-item">
+          <label>Remitente:</label>
+          <span>{{ routingSheet.sender.name }} ({{ routingSheet.sender.office.name }})</span>
+        </div>
+        <div class="info-item">
+          <label>Destinatario:</label>
+          <span>{{ routingSheet.recipient.name }} ({{ routingSheet.recipient.office.name }})</span>
+        </div>
       </div>
 
-      <div class="detail-section">
-        <h3>Hojas Agrupadas (IV.3.1)</h3>
-        <ul v-if="routingSheet.groupedAsMain && routingSheet.groupedAsMain.length > 0">
-          <li v-for="groupedRs in routingSheet.groupedAsMain" :key="groupedRs.id">
-            {{ groupedRs.number }} - {{ groupedRs.reference }}
-          </li>
-        </ul>
-        <p v-else>Esta hoja de ruta no agrupa a otras.</p>
-        <p v-if="routingSheet.groupedAsSecondary && routingSheet.groupedAsSecondary.length > 0">
-          Esta hoja de ruta está agrupada bajo: {{ routingSheet.groupedAsSecondary[0].mainRoutingSheet.number }}
-        </p>
-      </div>
-
-      <div class="detail-section">
-        <h3>Historial de Acciones (V.3)</h3>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Acción</th>
-              <th>Detalles</th>
-              <th>Fecha/Hora</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in routingSheet.history" :key="entry.id">
-              <td>{{ entry.user.name }}</td>
-              <td>{{ entry.action }}</td>
-              <td>{{ entry.details || 'N/A' }}</td>
-              <td>{{ formatDate(entry.timestamp) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="detail-section">
-        <h3>Opciones de Impresión</h3>
-        <!-- II.1.4: Impresión de Hoja de Ruta -->
-        <button @click="printRoutingSheet" class="btn btn-primary">Imprimir Hoja de Ruta</button>
-        <!-- IV.3.2: Generación de Carátula de Agrupación -->
-        <button v-if="routingSheet.groupedAsMain && routingSheet.groupedAsMain.length > 0" @click="printGroupCover" class="btn btn-info">Imprimir Carátula de Agrupación (IV.3.2)</button>
-        <!-- II.2.3: Impresión de Reverso -->
-        <button v-if="routingSheet.copies && routingSheet.copies.length > 0" @click="printReverso" class="btn btn-secondary">Imprimir Reverso (II.2.3)</button>
+      <div class="info-card">
+        <h3>Detalles del Documento</h3>
+        <div class="info-item">
+          <label>Proveído:</label>
+          <span>{{ routingSheet.provision }}</span>
+        </div>
+        <div class="info-item">
+          <label>Nº de Hojas:</label>
+          <span>{{ routingSheet.numberOfPages || 'N/A' }}</span>
+        </div>
+        <div class="info-item">
+          <label>Nº de Anexos:</label>
+          <span>{{ routingSheet.numberOfAttachments || 'N/A' }}</span>
+        </div>
+        <div class="info-item" v-if="routingSheet.hasCite">
+          <label>Cite:</label>
+          <span>{{ routingSheet.cite?.number }} - {{ routingSheet.cite?.reference }}</span>
+        </div>
       </div>
     </div>
-    <div v-else>
-      <p>Cargando...</p>
+
+    <div class="actions" v-if="canPerformActions">
+      <h3>Acciones</h3>
+      <div class="action-buttons">
+        <button 
+          v-if="routingSheet.status === 'PENDING'" 
+          @click="updateStatus('RECEIVED')"
+          class="btn btn-success"
+        >
+          Marcar como Recibido
+        </button>
+        <button 
+          v-if="routingSheet.status === 'RECEIVED'" 
+          @click="updateStatus('PROCESSED')"
+          class="btn btn-warning"
+        >
+          Marcar como Procesado
+        </button>
+        <button 
+          v-if="routingSheet.status !== 'ARCHIVED' && routingSheet.status !== 'CANCELLED'" 
+          @click="updateStatus('ARCHIVED')"
+          class="btn btn-info"
+        >
+          Archivar
+        </button>
+        <button 
+          v-if="routingSheet.status !== 'CANCELLED'" 
+          @click="updateStatus('CANCELLED')"
+          class="btn btn-danger"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+
+    <div class="copies-section" v-if="copies.length > 0">
+      <h3>Copias</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Destinatario</th>
+            <th>Proveído</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="copy in copies" :key="copy.id">
+            <td>{{ copy.recipient.name }} ({{ copy.recipient.office.name }})</td>
+            <td>{{ copy.provision }}</td>
+            <td>
+              <span :class="['status-badge', copy.status.toLowerCase()]">
+                {{ getCopyStatusText(copy.status) }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="history-section">
+      <h3>Historial</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="log in history" :key="log.id">
+            <td>{{ formatDateTime(log.timestamp) }}</td>
+            <td>{{ log.user.name }}</td>
+            <td>{{ getActionText(log.action) }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
-  
+  <div v-else class="loading">
+    Cargando...
+  </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import apiClient from '../services/api';
 
 export default {
   name: 'RoutingSheetDetail',
-  setup() {
+  props: {
+    id: {
+      type: [String, Number],
+      required: true
+    }
+  },
+  setup(props) {
     const route = useRoute();
-    const id = route.params.id;
+    const router = useRouter();
     const routingSheet = ref(null);
+    const copies = ref([]);
+    const history = ref([]);
+    const currentUser = ref(null);
 
     const fetchRoutingSheet = async () => {
       try {
-        const response = await apiClient.get(`/routing-sheets/${id}`);
+        const response = await apiClient.get(`/routing-sheets/${props.id}`);
         routingSheet.value = response.data;
       } catch (err) {
-        console.error('Error fetching routing sheet detail:', err);
+        console.error('Error fetching routing sheet:', err);
       }
     };
 
-    const printRoutingSheet = () => {
-      // II.1.4: Abrir el PDF generado por el backend en una nueva pestaña
-      window.open(`/api/reports/routing-sheet/${id}/pdf`, '_blank');
+    const fetchCopies = async () => {
+      try {
+        const response = await apiClient.get(`/copies/routing-sheet/${props.id}`);
+        copies.value = response.data;
+      } catch (err) {
+        console.error('Error fetching copies:', err);
+      }
     };
 
-    const printGroupCover = () => {
-      // IV.3.2: Abrir el PDF de la carátula generado por el backend en una nueva pestaña
-      // Asumiendo que el ID de la hoja principal es el mismo que el ID de la hoja actual si es principal
-      const mainId = routingSheet.value.id; // En la entidad, si es principal, su id es el del grupo
-      window.open(`/api/reports/group-cover/${mainId}/pdf`, '_blank');
+    const fetchHistory = async () => {
+      try {
+        const response = await apiClient.get(`/history/routing-sheet/${props.id}`);
+        history.value = response.data;
+      } catch (err) {
+        console.error('Error fetching history:', err);
+      }
     };
 
-    const printReverso = () => {
-      // II.2.3: Abrir el PDF del reverso generado por el backend en una nueva pestaña
-      window.open(`/api/reports/reverso/${id}/pdf`, '_blank');
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await apiClient.get('/users/profile');
+        currentUser.value = response.data;
+      } catch (err) {
+        console.error('Error fetching current user:', err);
+      }
+    };
+
+    const updateStatus = async (newStatus) => {
+      try {
+        await apiClient.patch(`/routing-sheets/${props.id}`, { status: newStatus });
+        await fetchRoutingSheet(); // Refresh data
+        await fetchHistory(); // Refresh history
+        
+        // Log the action
+        await apiClient.post('/history', {
+          routingSheetId: props.id,
+          userId: currentUser.value.id,
+          action: newStatus
+        });
+        
+        alert(`Estado actualizado a: ${getStatusText(newStatus)}`);
+      } catch (err) {
+        console.error('Error updating status:', err);
+        alert('Error al actualizar el estado.');
+      }
     };
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleString(); // Fecha y hora
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
     };
 
-    onMounted(fetchRoutingSheet);
+    const formatDateTime = (dateString) => {
+      const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    };
+
+    const getStatusText = (status) => {
+      const statusMap = {
+        'PENDING': 'Pendiente',
+        'RECEIVED': 'Recibido',
+        'PROCESSED': 'Procesado',
+        'ARCHIVED': 'Archivado',
+        'CANCELLED': 'Cancelado'
+      };
+      return statusMap[status] || status;
+    };
+
+    const getPriorityText = (priority) => {
+      const priorityMap = {
+        'NORMAL': 'Normal',
+        'URGENT': 'Urgente'
+      };
+      return priorityMap[priority] || priority;
+    };
+
+    const getCopyStatusText = (status) => {
+      const statusMap = {
+        'PENDING': 'Pendiente',
+        'RECEIVED': 'Recibido',
+        'READ': 'Leído'
+      };
+      return statusMap[status] || status;
+    };
+
+    const getActionText = (action) => {
+      const actionMap = {
+        'SENT': 'Enviado',
+        'RECEIVED': 'Recibido',
+        'PROCESSED': 'Procesado',
+        'ARCHIVED': 'Archivado',
+        'CANCELLED': 'Cancelado'
+      };
+      return actionMap[action] || action;
+    };
+
+    // Computed property to determine if current user can perform actions
+    const canPerformActions = () => {
+      if (!routingSheet.value || !currentUser.value) return false;
+      return routingSheet.value.recipient.id === currentUser.value.id;
+    };
+
+    onMounted(async () => {
+      await Promise.all([
+        fetchRoutingSheet(),
+        fetchCopies(),
+        fetchHistory(),
+        fetchCurrentUser()
+      ]);
+    });
 
     return {
       routingSheet,
-      printRoutingSheet,
-      printGroupCover,
-      printReverso,
+      copies,
+      history,
+      updateStatus,
       formatDate,
+      formatDateTime,
+      getStatusText,
+      getPriorityText,
+      getCopyStatusText,
+      getActionText,
+      canPerformActions
     };
-  },
+  }
 };
 </script>
 
 <style scoped>
-.detail-section {
-  margin-bottom: 2rem;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.routing-sheet-detail {
+  padding: 20px;
 }
 
-.detail-section h3 {
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.info-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-card h3 {
   margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
 }
 
-.status {
-  padding: 0.25em 0.4em;
-  border-radius: 0.25rem;
-  font-size: 0.75em;
-  font-weight: 700;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
+.info-item {
+  display: flex;
+  margin-bottom: 10px;
 }
 
-.status-pending { background-color: #ffc107; color: #212529; }
-.status-received { background-color: #17a2b8; color: white; }
-.status-archived { background-color: #6f42c1; color: white; }
-.status-cancelled { background-color: #6c757d; color: white; }
+.info-item label {
+  font-weight: bold;
+  min-width: 120px;
+  margin-right: 10px;
+}
+
+.actions {
+  margin-bottom: 30px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.copies-section, .history-section {
+  margin-bottom: 30px;
+}
 
 .table {
   width: 100%;
@@ -175,11 +369,53 @@ export default {
 
 .table th, .table td {
   border: 1px solid #ddd;
-  padding: 8px;
+  padding: 12px;
   text-align: left;
 }
 
 .table th {
   background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.btn-secondary { background-color: #6c757d; color: white; }
+.btn-success { background-color: #28a745; color: white; }
+.btn-warning { background-color: #ffc107; color: black; }
+.btn-info { background-color: #17a2b8; color: white; }
+.btn-danger { background-color: #dc3545; color: white; }
+
+.status-badge, .priority-badge {
+  padding: 0.25em 0.4em;
+  font-size: 75%;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 0.25rem;
+}
+
+.status-badge.pending { background-color: #fff3cd; color: #856404; }
+.status-badge.received { background-color: #cce5ff; color: #004085; }
+.status-badge.processed { background-color: #d4edda; color: #155724; }
+.status-badge.archived { background-color: #d1ecf1; color: #0c5460; }
+.status-badge.cancelled { background-color: #f8d7da; color: #721c24; }
+
+.priority-badge.normal { background-color: #e2e3e5; color: #383d41; }
+.priority-badge.urgent { background-color: #f8d7da; color: #721c24; }
+
+.loading {
+  text-align: center;
+  padding: 50px;
+  font-size: 1.2rem;
 }
 </style>
