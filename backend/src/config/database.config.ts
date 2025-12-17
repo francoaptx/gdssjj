@@ -14,7 +14,7 @@ export const databaseConfig: TypeOrmModuleAsyncOptions = {
       database: configService.get('DB_NAME') || 'corsj',
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV !== 'production', // Only for development
-      logging: process.env.NODE_ENV === 'development', // Enable logging in development
+      logging: false, // Disable logging queries in terminal
     };
   },
 };

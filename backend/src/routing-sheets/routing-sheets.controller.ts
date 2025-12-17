@@ -1,9 +1,10 @@
 // src/routing-sheets/routing-sheets.controller.ts
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Query, Patch } from '@nestjs/common';
 import { RoutingSheetsService } from './routing-sheets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User as CurrentUser } from '../common/decorators/user.decorator';
 import { UpdateRoutingSheetDto } from './dto/update-routing-sheet.dto';
+import { CreateRoutingSheetDto } from './dto/create-routing-sheet.dto';
 
 @Controller('routing-sheets')
 @UseGuards(JwtAuthGuard)
@@ -11,7 +12,7 @@ export class RoutingSheetsController {
   constructor(private readonly routingSheetsService: RoutingSheetsService) {}
 
   @Post()
-  create(@Body() createRoutingSheetDto: any, @CurrentUser() user: any) {
+  create(@Body() createRoutingSheetDto: CreateRoutingSheetDto, @CurrentUser() user: any) {
     return this.routingSheetsService.create(createRoutingSheetDto, user.userId);
   }
 
@@ -20,12 +21,7 @@ export class RoutingSheetsController {
     return this.routingSheetsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.routingSheetsService.findOne(+id);
-  }
-
-  @Put(':id/receive')
+  @Patch(':id/receive')
   receive(@Param('id') id: string, @CurrentUser() user: any) {
     return this.routingSheetsService.receive(+id, user.userId);
   }
@@ -66,6 +62,11 @@ export class RoutingSheetsController {
   @Get('archived')
   findArchivedByUser(@CurrentUser() user: any) {
     return this.routingSheetsService.findArchivedByUser(user.userId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.routingSheetsService.findOne(+id);
   }
 
   @Delete(':id')

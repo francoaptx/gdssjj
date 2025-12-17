@@ -26,6 +26,11 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token expirado o inválido
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
     console.error('Error en la respuesta de la API:', error);
     return Promise.reject(error);
   }

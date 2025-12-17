@@ -92,13 +92,9 @@ export default {
       loading.value = true;
       error.value = null;
       try {
-        console.log('Fetching offices...');
         const response = await apiClient.get('/offices');
-        console.log('Offices fetched successfully:', response.data);
         offices.value = response.data;
       } catch (err) {
-        console.error('Error fetching offices:', err);
-        console.error('Error response:', err.response);
         error.value = 'Error al cargar las oficinas: ' + (err.response?.data?.message || err.message);
         alert(error.value);
       } finally {
@@ -115,13 +111,11 @@ export default {
       try {
         if (editingOffice.value) {
           // Actualizar oficina existente
-          console.log('Updating office:', editingOffice.value.id, officeForm.value);
-          await apiClient.put(`/offices/${editingOffice.value.id}`, { name: officeForm.value.name.trim() });
+            await apiClient.put(`/offices/${editingOffice.value.id}`, { name: officeForm.value.name.trim() });
           alert('Oficina actualizada exitosamente.');
         } else {
           // Crear nueva oficina
-          console.log('Creating new office:', officeForm.value);
-          await apiClient.post('/offices', { name: officeForm.value.name.trim() });
+            await apiClient.post('/offices', { name: officeForm.value.name.trim() });
           alert('Oficina creada exitosamente.');
         }
         
@@ -130,7 +124,6 @@ export default {
         editingOffice.value = null;
         await fetchOffices();
       } catch (err) {
-        console.error('Error saving office:', err);
         if (err.response && err.response.status === 400) {
           alert('Error: ' + err.response.data.message);
         } else if (err.response && err.response.status === 401) {
@@ -161,7 +154,6 @@ export default {
         alert('Oficina eliminada exitosamente.');
         await fetchOffices();
       } catch (err) {
-        console.error('Error deleting office:', err);
         if (err.response && err.response.status === 404) {
           alert('Error: Oficina no encontrada.');
         } else if (err.response && err.response.status === 409) {

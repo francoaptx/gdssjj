@@ -34,7 +34,7 @@ import { User } from './users/entities/user.entity';
       database: process.env.DB_NAME || 'corsj',
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV !== 'production',
-      logging: process.env.NODE_ENV === 'development',
+      logging: false, // Disable logging queries in terminal
     }),
     TypeOrmModule.forFeature([Role, Office, Position, User]),
     AuthModule,

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { RoutingSheet } from './entities/routing-sheet.entity';
@@ -8,6 +8,8 @@ import { HistoryService } from '../history/history.service';
 import { User } from '../users/entities/user.entity';
 import { Cite } from '../cites/entities/cite.entity';
 import { Folder } from '../folders/entities/folder.entity';
+import { CopiesService } from '../copies/copies.service';
+
 
 @Injectable()
 export class RoutingSheetsService {
@@ -21,6 +23,8 @@ export class RoutingSheetsService {
     @InjectRepository(Folder)
     private foldersRepository: Repository<Folder>,
     private historyService: HistoryService,
+    @Inject(forwardRef(() => CopiesService))
+    private copiesService: CopiesService,
   ) {}
 
   async create(createRoutingSheetDto: CreateRoutingSheetDto, senderId: number): Promise<RoutingSheet> {
@@ -63,7 +67,7 @@ export class RoutingSheetsService {
       
       cite = this.citesRepository.create({
         number: citeNumber,
-        subject: createRoutingSheetDto.reference,
+        subject: createRoutingSheetDto.reference || 'Sin referencia',
         createdBy: sender,
         isUploaded: false, // Initially not uploaded
         createdAt: new Date(),
@@ -80,45 +84,42 @@ export class RoutingSheetsService {
         createdAt: MoreThanOrEqual(new Date(year, 0, 1))
       }
     });
-    let number = `HR-${year}-${month}-${String(count + 1).padStart(4, '0')}`;
-
-    // Verificar que el número sea único (en caso de colisión)
-    let existingSheet = await this.routingSheetsRepository.findOne({ where: { number } });
-    let counter = 1;
-    while (existingSheet) {
-      const altNumber = `HR-${year}-${month}-${String(count + counter).padStart(4, '0')}`;
-      existingSheet = await this.routingSheetsRepository.findOne({ where: { number: altNumber } });
-      if (!existingSheet) {
-        number = altNumber;
-        break;
-      }
-      counter++;
-    }
+    
+    // Formato: HR-XXXX-YYYY (XXXX es número secuencial, YYYY es el año)
+    const routingSheetNumber = `HR-${String(count + 1).padStart(4, '0')}-${year}`;
 
     // Crear la hoja de ruta
     const routingSheet = this.routingSheetsRepository.create({
-      number,
-      reference: createRoutingSheetDto.reference,
-      provision: createRoutingSheetDto.provision,
-      date: createRoutingSheetDto.date || new Date(),
-      attachments: createRoutingSheetDto.attachments,
+      number: routingSheetNumber,
       sender,
       recipient,
-      cite: cite || undefined,
+      reference: createRoutingSheetDto.reference || null,
+      provision: createRoutingSheetDto.provision || 'Sin provisión',
+      date: createRoutingSheetDto.date ? new Date(createRoutingSheetDto.date) : new Date(),
+      attachments: createRoutingSheetDto.attachments,
+      cite: cite || null,
       numberOfPages: createRoutingSheetDto.numberOfPages,
       numberOfAttachments: createRoutingSheetDto.numberOfAttachments,
-      priority: createRoutingSheetDto.priority,
       hasCite: createRoutingSheetDto.hasCite,
+      priority: createRoutingSheetDto.priority,
       status: 'PENDING',
       createdAt: new Date(),
     });
 
-    const savedRS = await this.routingSheetsRepository.save(routingSheet);
+    const savedRoutingSheet = await this.routingSheetsRepository.save(routingSheet);
 
     // Registrar en el historial
-    await this.historyService.logAction(savedRS.id, senderId, 'SENT');
+    await this.historyService.logAction(savedRoutingSheet.id, senderId, 'SENT');
 
-    return savedRS;
+    // Crear copias si existen
+    if (createRoutingSheetDto.copies && createRoutingSheetDto.copies.length > 0) {
+      for (const copyDto of createRoutingSheetDto.copies) {
+        await this.copiesService.create(savedRoutingSheet.id, copyDto.recipientId, copyDto.provision);
+      }
+    }
+
+
+    return savedRoutingSheet;
   }
 
   async findAll(): Promise<RoutingSheet[]> {
@@ -178,8 +179,8 @@ export class RoutingSheetsService {
     }
 
     // Si hay nuevos destinatarios, cambiar el estado a PENDIENTE y asignar nuevo destinatario
-    if (updateRoutingSheetDto.newRecipientId) {
-      const newRecipient = await this.usersRepository.findOne({ where: { id: updateRoutingSheetDto.newRecipientId } });
+    if (updateRoutingSheetDto.recipientId) {
+      const newRecipient = await this.usersRepository.findOne({ where: { id: updateRoutingSheetDto.recipientId } });
       if (!newRecipient) {
         throw new BadRequestException('New recipient not found');
       }
@@ -283,28 +284,40 @@ export class RoutingSheetsService {
   async findPendingByUser(userId: number): Promise<RoutingSheet[]> {
     return this.routingSheetsRepository.find({
       where: { recipient: { id: userId }, status: 'PENDING' },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
     });
   }
 
   async findSentByUser(userId: number): Promise<RoutingSheet[]> {
     return this.routingSheetsRepository.find({
-      where: { sender: { id: userId }, status: 'PENDING' }, // Solo no recibidas
-      order: { createdAt: 'DESC' }
+      where: { sender: { id: userId } }, // Todas las enviadas por el usuario
+      order: { createdAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
     });
   }
 
   async findReceivedByUser(userId: number): Promise<RoutingSheet[]> {
     return this.routingSheetsRepository.find({
-      where: { sender: { id: userId }, status: 'RECEIVED' }, // Asumiendo que 'RECEIVED' significa que entró en la bandeja del destinatario
-      order: { receivedAt: 'DESC' }
+      where: { recipient: { id: userId }, status: 'RECEIVED' }, // Corregido: debe ser recipient, no sender
+      order: { receivedAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
     });
   }
 
   async findArchivedByUser(userId: number): Promise<RoutingSheet[]> {
     return this.routingSheetsRepository.find({
       where: { recipient: { id: userId }, status: 'ARCHIVED' },
-      order: { archivedAt: 'DESC' }
+      order: { archivedAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
+    });
+  }
+
+  async findByRecipient(recipientId: number): Promise<RoutingSheet[]> {
+    return this.routingSheetsRepository.find({
+      where: { recipient: { id: recipientId } },
+      order: { createdAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
     });
   }
 

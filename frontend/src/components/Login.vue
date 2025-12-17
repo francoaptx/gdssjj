@@ -1,4 +1,4 @@
-<!-- src/components/Login.vue -->
+<!-- src/components/Login.vue --> 
 <template>
   <div class="login-container">
     <form @submit.prevent="onSubmit" class="login-form">
@@ -18,7 +18,7 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import apiClient from '../services/api';
@@ -31,54 +31,50 @@ export default {
     const error = ref('');
     const router = useRouter();
     const store = useStore();
+    const isAuthenticated = computed(() => store.getters.isAuthenticated);
+
+    onMounted(() => {
+      if (isAuthenticated.value) {
+        router.push('/dashboard');
+      }
+    });
 
     const onSubmit = async () => {
       try {
-        error.value = '';
-        console.log('Intentando iniciar sesión con:', { 
+        const response = await apiClient.post('/auth/login', { 
           username: username.value, 
           password: password.value 
         });
         
-        const response = await apiClient.post('/auth/login', {
-          username: username.value,
-          password: password.value,
-        });
-
-        console.log('Respuesta del servidor:', response);
-
-        // Verificar que el backend devuelve { access_token, user }
-        const { access_token, user } = response.data;
-
-        if (!access_token) {
-          throw new Error('Token de acceso no encontrado en la respuesta');
-        }
-
-        // Guardar token y usuario en Vuex y localStorage
-        store.dispatch('login', { token: access_token, user });
-
-        // Redirigir al dashboard
-        router.push('/dashboard');
-      } catch (err) {
-        console.error('Error de inicio de sesión completo:', err);
+        // Almacenar token y datos de usuario
+        localStorage.setItem('token', response.data.access_token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        if (err.response) {
-          // Error de respuesta del servidor
-          console.log('Error de respuesta:', err.response);
-          if (err.response.status === 401) {
-            error.value = 'Credenciales incorrectas.';
-          } else {
-            error.value = `Error del servidor: ${err.response.status} - ${err.response.statusText}`;
-          }
-        } else if (err.request) {
-          // Error de red
-          console.log('Error de solicitud:', err.request);
-          error.value = 'Error de red. Verifique su conexión.';
+        // Actualizar el estado de Vuex
+        const user = response.data.user;
+        store.dispatch('login', { token: response.data.access_token, user });
+        
+        // Redirección basada en el rol del usuario
+        if (user && user.role && user.role.name === 'ADMIN') {
+          // Si es admin, redirigir a la página de gestión de usuarios
+          router.push('/users');
         } else {
-          // Otro tipo de error
-          console.log('Error desconocido:', err.message);
-          error.value = `Error: ${err.message}`;
+          // Para otros usuarios, redirigir al dashboard
+          router.push('/dashboard');
         }
+      } catch (err) {
+        if (err.response) {
+          // El servidor respondió con un estado de error (4xx, 5xx)
+          if (err.response.status === 401) {
+            error.value = 'Nombre de usuario o contraseña incorrectos.';
+          } else {
+            error.value = `Error del servidor: ${err.response.status}. Inténtelo de nuevo más tarde.`;
+          }
+        } else {
+          // Error de red o el servidor no responde
+          error.value = 'No se pudo conectar con el servidor. Verifique su conexión a internet.';
+        }
+        console.error('Error de inicio de sesión:', err);
       }
     };
 

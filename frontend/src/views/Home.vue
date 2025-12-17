@@ -17,22 +17,20 @@
 <script> 
 import { computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
 
-export default { 
+export default {
   name: 'Home',
   setup() {
     const store = useStore();
+    const router = useRouter();
     const isAuthenticated = computed(() => store.getters.isAuthenticated);
     const user = computed(() => store.getters.user);
-    
-    console.log('Home component setup');
-    console.log('isAuthenticated:', isAuthenticated.value);
-    console.log('user:', user.value);
 
     onMounted(() => {
-      console.log('Home component mounted');
-      console.log('isAuthenticated (mounted):', isAuthenticated.value);
-      console.log('user (mounted):', user.value);
+      if (isAuthenticated.value) {
+        router.push('/dashboard');
+      }
     });
 
     return {
@@ -40,7 +38,7 @@ export default {
       user
     };
   }
-}; 
+};
 </script> 
 
 <style scoped> 
@@ -56,20 +54,10 @@ export default {
   text-align: center; 
 } 
 
-.content h1 { 
-  color: #2c3e50; 
-  margin-bottom: 1rem; 
-} 
-
-.content p { 
-  color: #7f8c8d; 
-  margin-bottom: 1rem; 
-} 
-
 .content a { 
-  color: #3498db; 
-  text-decoration: none; 
+  color: #42b983; 
   font-weight: bold; 
+  text-decoration: none; 
 } 
 
 .content a:hover { 

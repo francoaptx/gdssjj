@@ -1,7 +1,10 @@
 <!-- src/components/RoutingSheetList.vue -->
 <template>
   <div class="routing-sheet-list">
-    <h2>Hojas de Ruta</h2>
+    <div class="header">
+      <h2>Hojas de Ruta</h2>
+      <router-link to="/routing-sheets/create" class="btn btn-primary">Crear Nueva</router-link>
+    </div>
     <div class="controls">
       <input
         v-model="searchQuery"
@@ -9,7 +12,6 @@
         placeholder="Buscar..."
         @input="debouncedSearch"
       />
-      <router-link to="/routing-sheets/create" class="btn btn-primary">Crear Nueva</router-link>
     </div>
     <table class="table">
       <thead>
@@ -27,9 +29,9 @@
       <tbody>
         <tr v-for="rs in routingSheets" :key="rs.id">
           <td>{{ rs.number }}</td>
-          <td>{{ rs.reference }}</td>
-          <td>{{ rs.sender.name }}</td>
-          <td>{{ rs.recipient.name }}</td>
+          <td>{{ rs.reference || 'Sin referencia' }}</td>
+          <td>{{ rs.sender ? rs.sender.name : 'N/A' }}</td>
+          <td>{{ rs.recipient ? rs.recipient.name : 'N/A' }}</td>
           <td>{{ formatDate(rs.createdAt) }}</td>
           <td>
             <span :class="['status-badge', rs.status.toLowerCase()]">
@@ -37,7 +39,7 @@
             </span>
           </td>
           <td>
-            <span :class="['priority-badge', rs.priority.toLowerCase()]">
+            <span :class="['priority-badge', rs.priority ? rs.priority.toLowerCase() : '']">
               {{ getPriorityText(rs.priority) }}
             </span>
           </td>
@@ -65,7 +67,9 @@ export default {
 
     const fetchRoutingSheets = async () => {
       try {
-        const response = await apiClient.get('/routing-sheets');
+        const token = localStorage.getItem('token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await apiClient.get('/routing-sheets', config);
         routingSheets.value = response.data;
       } catch (err) {
         console.error('Error fetching routing sheets:', err);
@@ -74,7 +78,9 @@ export default {
 
     const searchRoutingSheets = async () => {
       try {
-        const response = await apiClient.get(`/routing-sheets/search?query=${encodeURIComponent(searchQuery.value)}`);
+        const token = localStorage.getItem('token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await apiClient.get(`/routing-sheets/search?query=${encodeURIComponent(searchQuery.value)}`, config);
         routingSheets.value = response.data;
       } catch (err) {
         console.error('Error searching routing sheets:', err);
@@ -84,6 +90,7 @@ export default {
     const debouncedSearch = debounce(searchRoutingSheets, 300);
 
     const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
       const options = { year: 'numeric', month: 'short', day: 'numeric' };
       return new Date(dateString).toLocaleDateString(undefined, options);
     };
@@ -100,11 +107,13 @@ export default {
     };
 
     const getPriorityText = (priority) => {
-      const priorityMap = {
-        'NORMAL': 'Normal',
-        'URGENT': 'Urgente'
-      };
-      return priorityMap[priority] || priority;
+      if (!priority) return 'N/A';
+      switch (priority) {
+        case 'HIGH': return 'Alta';
+        case 'NORMAL': return 'Normal';
+        case 'LOW': return 'Baja';
+        default: return priority;
+      }
     };
 
     // Función de utilidad para debounce
@@ -139,6 +148,17 @@ export default {
   padding: 20px;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  margin: 0;
+}
+
 .controls {
   display: flex;
   justify-content: space-between;
@@ -146,8 +166,8 @@ export default {
 }
 
 .controls input {
-  padding: 0.5rem;
-  border: 1px solid #ccc;
+  padding: 8px;
+  border: 1px solid #ddd;
   border-radius: 4px;
   width: 300px;
 }
@@ -155,45 +175,27 @@ export default {
 .table {
   width: 100%;
   border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.table th, .table td {
-  border: 1px solid #ddd;
+.table th,
+.table td {
   padding: 12px;
   text-align: left;
+  border-bottom: 1px solid #ddd;
 }
 
 .table th {
-  background-color: #f2f2f2;
+  background-color: #f8f9fa;
   font-weight: bold;
 }
 
-.text-center {
-  text-align: center;
-}
-
-.btn {
-  padding: 0.25rem 0.5rem;
-  text-decoration: none;
-  border-radius: 4px;
-  cursor: pointer;
-  border: none;
-  font-size: 0.875rem;
-}
-
-.btn-primary { background-color: #007bff; color: white; }
-.btn-info { background-color: #17a2b8; color: white; }
-.btn-sm { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
-
 .status-badge {
-  padding: 0.25em 0.4em;
-  font-size: 75%;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: 0.25rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
 }
 
 .status-badge.pending { background-color: #fff3cd; color: #856404; }
@@ -203,16 +205,41 @@ export default {
 .status-badge.cancelled { background-color: #f8d7da; color: #721c24; }
 
 .priority-badge {
-  padding: 0.25em 0.4em;
-  font-size: 75%;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: 0.25rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
 }
 
-.priority-badge.normal { background-color: #e2e3e5; color: #383d41; }
+.priority-badge.normal { background-color: #d1ecf1; color: #0c5460; }
 .priority-badge.urgent { background-color: #f8d7da; color: #721c24; }
+
+.text-center {
+  text-align: center;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.8em;
+}
 </style>

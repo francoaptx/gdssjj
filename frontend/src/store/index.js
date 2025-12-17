@@ -67,6 +67,9 @@ const store = createStore({
       if (token && user) {
         commit('SET_TOKEN', token);
         commit('SET_USER', user);
+      } else {
+        // Si hay datos incompletos, limpiar todo
+        commit('CLEAR_AUTH');
       }
     }
   }

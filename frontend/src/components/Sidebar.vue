@@ -4,7 +4,7 @@
     <nav> 
       <router-link to="/dashboard">Dashboard</router-link> 
       <router-link to="/routing-sheets">Hoja de Ruta</router-link> 
-      <router-link to="/documents">Documentos</router-link> 
+      <router-link to="/routing-sheets/create" class="sub-item">Crear Hoja de Ruta</router-link>
       <router-link to="/reception">Recepcion</router-link> 
       <router-link to="/processing">Tramite</router-link> 
       <router-link to="/archive">Archivo</router-link> 
@@ -13,7 +13,7 @@
       <div class="admin-section" v-if="isAdmin">
         <hr>
         <h3>Administración</h3>
-        <router-link to="/admin/users">Gestionar Usuarios</router-link>
+        <router-link to="/users">Gestionar Usuarios</router-link>
         <router-link to="/admin/positions">Gestionar Cargos</router-link>
         <router-link to="/admin/offices">Gestionar Oficinas</router-link>
       </div>
@@ -61,6 +61,10 @@ export default {
 .sidebar a.router-link-active { 
   background-color: #2c3e50; 
 } 
+.sidebar .sub-item {
+  padding-left: 1.5rem;
+  font-size: 0.9rem;
+}
 .sidebar hr {
   width: 100%;
   border: 0.5px solid #6c757d;

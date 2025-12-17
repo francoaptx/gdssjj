@@ -24,10 +24,10 @@ export class RoutingSheet {
   @JoinColumn()
   recipient: User;
 
-  @Column()
+  @Column({ nullable: true })
   reference: string;
 
-  @Column()
+  @Column({ nullable: true })
   provision: string;
 
   @Column({ type: 'date' })

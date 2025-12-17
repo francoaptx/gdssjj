@@ -1,15 +1,23 @@
 // src/routing-sheets/dto/create-routing-sheet.dto.ts
-import { IsString, IsOptional, IsInt, Min, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, IsBoolean, IsDateString, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class CopyDto {
+  @IsInt() recipientId: number;
+  @IsString() provision: string;
+}
 
 export class CreateRoutingSheetDto {
   @IsString()
-  reference: string;
+  @IsOptional()
+  reference?: string;
 
   @IsInt()
   recipientId: number;
 
   @IsString()
-  provision: string;
+  @IsOptional()
+  provision?: string;
 
   @IsDateString()
   @IsOptional()
@@ -38,4 +46,10 @@ export class CreateRoutingSheetDto {
 
   @IsString()
   priority: string;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CopyDto)
+  copies?: CopyDto[];
 }
