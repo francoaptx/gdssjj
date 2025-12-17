@@ -79,6 +79,11 @@ export class RoutingSheetsController {
     return this.routingSheetsService.findOne(+id);
   }
 
+  @Patch(':id/cancel')
+  cancel(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.routingSheetsService.cancel(+id, user.userId);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.routingSheetsService.remove(+id);

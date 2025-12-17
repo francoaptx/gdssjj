@@ -45,7 +45,7 @@
               <td>{{ sheet.recipient.name }}</td>
               <td>{{ sheet.reference }}</td>
               <td>{{ formatDate(sheet.createdAt) }}</td>
-              <td><span class="status-pending">Pendiente</span></td>
+              <td><span class="status-pending">No recibido</span></td>
             </tr>
           </tbody>
         </table>

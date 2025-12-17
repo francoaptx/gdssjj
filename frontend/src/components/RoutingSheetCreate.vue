@@ -7,16 +7,17 @@
         <label for="generatedNumber">Número de Hoja de Ruta (Autogenerado):</label>
         <input v-model="generatedNumber" type="text" id="generatedNumber" readonly class="readonly-field" />
       </div>
-      <div class="form-group">
-        <label for="reference">Referencia:</label>
-        <input v-model="reference" type="text" id="reference" required />
-      </div>
+
       <div class="form-group">
         <label for="recipientId">Destinatario:</label>
         <select v-model="recipientId" id="recipientId" required>
           <option value="">Seleccione un destinatario</option>
           <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} ({{ user.office.name }})</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label for="reference">Referencia:</label>
+        <input v-model="reference" type="text" id="reference" required />
       </div>
       <div class="form-group">
         <label for="provision">Proveído:</label>

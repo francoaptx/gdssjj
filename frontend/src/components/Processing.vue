@@ -154,7 +154,7 @@ export default {
 
     const fetchPendingRoutingSheets = async () => {
       try {
-        const response = await apiClient.get('/routing-sheets/pending');
+        const response = await apiClient.get('/routing-sheets/received');
         pendingRoutingSheets.value = response.data;
       } catch (err) {
         console.error('Error fetching pending routing sheets:', err);
@@ -275,7 +275,7 @@ export default {
     };
 
     const getDaysUntilDeadline = (receivedAt) => {
-        if (!receivedAt) return 'N/A';
+        if (!receivedAt) return 'sin recibir';
         const receivedDate = new Date(receivedAt);
         const deadlineDate = new Date(receivedDate);
         deadlineDate.setDate(deadlineDate.getDate() + 11); // IV.1.2: 11 días calendario
@@ -293,8 +293,9 @@ export default {
 
     const getStatusText = (status) => {
         const statusMap = {
-            'PENDING': 'Pendiente',
-            'RECEIVED': 'Recibido',
+            'UNRECEIVED': 'No recibido',
+            'PENDING': 'No recibido',
+            'RECEIVED': 'Pendiente',
             'PROCESSED': 'Procesado',
             'ARCHIVED': 'Archivado',
             'CANCELLED': 'Cancelado'

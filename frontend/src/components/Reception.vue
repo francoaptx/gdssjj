@@ -14,7 +14,7 @@
     </div>
 
     <div v-else>
-      <p>Hojas de ruta pendientes de recepción. Al hacer clic en "Recibir", la hoja de ruta pasará a la sección de "Pendientes" para su procesamiento.</p>
+      <p>Hojas de ruta no recibidas. Al hacer clic en "Recibir", la hoja de ruta pasará a la sección de "Pendientes" para su procesamiento.</p>
       <table class="table">
         <thead>
           <tr>
@@ -28,7 +28,7 @@
         </thead>
         <tbody>
           <tr v-if="incomingSheets.length === 0">
-            <td colspan="6" class="text-center">No tiene hojas de ruta pendientes de recepción.</td>
+            <td colspan="6" class="text-center">No tiene hojas de ruta no recibidas.</td>
           </tr>
           <tr v-for="rs in incomingSheets" :key="rs.id">
             <td>{{ rs.number }}</td>
@@ -75,7 +75,7 @@ export default {
           throw new Error('No se pudo obtener el ID del usuario actual.');
         }
 
-        // Usar el endpoint que obtiene las hojas pendientes no recibidas para el usuario autenticado
+        // Usar el endpoint que obtiene las hojas no recibidas para el usuario autenticado
         const sheetsResponse = await apiClient.get(`/routing-sheets/unreceived`);
         
         // Los datos ya están filtrados por el backend
