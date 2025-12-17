@@ -129,6 +129,10 @@ export class RoutingSheetsService {
   }
 
   async findOne(id: number): Promise<RoutingSheet> {
+    if (isNaN(id)) {
+      throw new BadRequestException('El ID de la hoja de ruta no es válido.');
+    }
+
     const routingSheet = await this.routingSheetsRepository.findOne({ 
       where: { id },
       relations: ['sender', 'recipient', 'cite', 'copies', 'groupedAsMain', 'groupedAsSecondary', 'histories', 'archivedFolder']
@@ -212,6 +216,11 @@ export class RoutingSheetsService {
       throw new BadRequestException('Only the recipient can archive the routing sheet');
     }
 
+    // Verificar que esté en estado RECIBIDO o PENDIENTE
+    if (routingSheet.status !== 'RECEIVED' && routingSheet.status !== 'PENDING') {
+      throw new BadRequestException('Routing sheet must be RECEIVED or PENDING to be archived');
+    }
+
     // Verificar que la carpeta existe
     const folder = await this.foldersRepository.findOne({ where: { id: folderId } });
     if (!folder) {
@@ -283,7 +292,10 @@ export class RoutingSheetsService {
 
   async findPendingByUser(userId: number): Promise<RoutingSheet[]> {
     return this.routingSheetsRepository.find({
-      where: { recipient: { id: userId }, status: 'PENDING' },
+      where: [
+        { recipient: { id: userId }, status: 'PENDING' },
+        { recipient: { id: userId }, status: 'RECEIVED' }
+      ],
       order: { createdAt: 'DESC' },
       relations: ['sender', 'recipient', 'cite']
     });
@@ -309,6 +321,14 @@ export class RoutingSheetsService {
     return this.routingSheetsRepository.find({
       where: { recipient: { id: userId }, status: 'ARCHIVED' },
       order: { archivedAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
+    });
+  }
+
+  async findUnreceivedPendingByUser(userId: number): Promise<RoutingSheet[]> {
+    return this.routingSheetsRepository.find({
+      where: { recipient: { id: userId }, status: 'PENDING' },
+      order: { createdAt: 'DESC' },
       relations: ['sender', 'recipient', 'cite']
     });
   }

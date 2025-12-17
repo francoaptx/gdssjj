@@ -14,6 +14,7 @@
     </div>
 
     <div v-else>
+      <p>Hojas de ruta pendientes de recepción. Al hacer clic en "Recibir", la hoja de ruta pasará a la sección de "Pendientes" para su procesamiento.</p>
       <table class="table">
         <thead>
           <tr>
@@ -74,8 +75,8 @@ export default {
           throw new Error('No se pudo obtener el ID del usuario actual.');
         }
 
-        // Usar el endpoint que obtiene las hojas pendientes para el usuario autenticado
-        const sheetsResponse = await apiClient.get(`/routing-sheets/pending`);
+        // Usar el endpoint que obtiene las hojas pendientes no recibidas para el usuario autenticado
+        const sheetsResponse = await apiClient.get(`/routing-sheets/unreceived`);
         
         // Los datos ya están filtrados por el backend
         incomingSheets.value = sheetsResponse.data;
@@ -89,7 +90,7 @@ export default {
     };
 
     const receiveSheet = async (sheetId) => {
-      if (!confirm('¿Está seguro de que desea marcar esta hoja de ruta como recibida?')) {
+      if (!confirm('¿Está seguro de que desea marcar esta hoja de ruta como recibida?\nLa hoja de ruta aparecerá en la sección "Pendientes" para su procesamiento.')) {
         return;
       }
       try {
@@ -99,7 +100,7 @@ export default {
         // Eliminar la hoja de ruta de la lista local para actualizar la UI
         incomingSheets.value = incomingSheets.value.filter(sheet => sheet.id !== sheetId);
         
-        alert('Hoja de ruta recibida exitosamente.');
+        alert('Hoja de ruta recibida exitosamente.\nAhora puede encontrarla en la sección "Pendientes" para procesarla.');
       } catch (err) {
         console.error('Error receiving sheet:', err);
         alert('Hubo un error al intentar recibir la hoja de ruta.');
