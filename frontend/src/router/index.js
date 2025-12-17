@@ -16,6 +16,7 @@ import Reception from '../components/Reception.vue';
 import Processing from '../components/Processing.vue';
 import Archive from '../components/Archive.vue';
 import History from '../components/History.vue';
+import Sent from '../components/Sent.vue';
 import UserManagement from '../components/UserManagement.vue';
 import OfficeManagement from '../components/OfficeManagement.vue';
 import PositionManagement from '../components/PositionManagement.vue';
@@ -33,6 +34,7 @@ const routes = [
   { path: '/documents/create', component: DocumentCreate, meta: { requiresAuth: true } },
   { path: '/reception', component: Reception, meta: { requiresAuth: true } },
   { path: '/processing', component: Processing, meta: { requiresAuth: true } },
+  { path: '/sent', component: Sent, meta: { requiresAuth: true } },
   { path: '/archive', component: Archive, meta: { requiresAuth: true } },
   { path: '/history', component: History, meta: { requiresAuth: true } },
   { path: '/users', component: UserManagement, meta: { requiresAuth: true } },

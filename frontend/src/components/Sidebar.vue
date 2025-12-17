@@ -7,6 +7,7 @@
       <router-link to="/routing-sheets/create">Crear Hoja de Ruta</router-link>
       <router-link to="/reception">Recepcion</router-link> 
       <router-link to="/processing">Pendientes</router-link> 
+      <router-link to="/sent">Enviados</router-link>
       <router-link to="/archive">Archivo</router-link> 
       <router-link to="/history">Historial</router-link> 
       <router-link to="/users">Usuarios</router-link>

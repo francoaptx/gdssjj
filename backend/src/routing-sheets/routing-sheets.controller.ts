@@ -54,6 +54,11 @@ export class RoutingSheetsController {
     return this.routingSheetsService.findUnreceivedPendingByUser(user.userId);
   }
 
+  @Get('sent/unreceived')
+  findUnreceivedSentByUser(@CurrentUser() user: any) {
+    return this.routingSheetsService.findUnreceivedSentByUser(user.userId);
+  }
+
   @Get('sent')
   findSentByUser(@CurrentUser() user: any) {
     return this.routingSheetsService.findSentByUser(user.userId);

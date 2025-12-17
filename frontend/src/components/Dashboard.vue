@@ -24,6 +24,69 @@
         <p>Cancelados</p>
       </div>
     </div>
+    
+    <!-- Tabla de Documentos Enviados (No Recibidos) -->
+    <div class="section">
+      <h3>Documentos Enviados (No Recibidos)</h3>
+      <div class="table-container">
+        <table class="data-table" v-if="unreceivedSentSheets.length > 0">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Destinatario</th>
+              <th>Referencia</th>
+              <th>Fecha de Envío</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="sheet in unreceivedSentSheets" :key="sheet.id">
+              <td>{{ sheet.number }}</td>
+              <td>{{ sheet.recipient.name }}</td>
+              <td>{{ sheet.reference }}</td>
+              <td>{{ formatDate(sheet.createdAt) }}</td>
+              <td><span class="status-pending">Pendiente</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="no-data">
+          <p>No hay documentos enviados pendientes de recepción</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tabla de Historial -->
+    <div class="section">
+      <h3>Historial de Documentos</h3>
+      <div class="table-container">
+        <table class="data-table" v-if="receivedSentSheets.length > 0">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Destinatario</th>
+              <th>Referencia</th>
+              <th>Fecha de Envío</th>
+              <th>Fecha de Recepción</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="sheet in receivedSentSheets" :key="sheet.id">
+              <td>{{ sheet.number }}</td>
+              <td>{{ sheet.recipient.name }}</td>
+              <td>{{ sheet.reference }}</td>
+              <td>{{ formatDate(sheet.createdAt) }}</td>
+              <td>{{ sheet.receivedAt ? formatDate(sheet.receivedAt) : 'N/A' }}</td>
+              <td><span class="status-received">Recibido</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="no-data">
+          <p>No hay documentos recibidos en el historial</p>
+        </div>
+      </div>
+    </div>
+    
     <!-- Gráfica de documentos generados -->
     <div class="chart-container">
       <h3>Gráfica de Documentos Generados</h3>
@@ -52,6 +115,9 @@ export default {
       archivedCount: 0,
       cancelledCount: 0,
     });
+    
+    const unreceivedSentSheets = ref([]);
+    const receivedSentSheets = ref([]);
 
     const fetchStats = async () => {
       try {
@@ -83,11 +149,46 @@ export default {
         console.error('Error fetching dashboard stats:', err);
       }
     };
+    
+    const fetchUnreceivedSentSheets = async () => {
+      try {
+        const response = await apiClient.get('/routing-sheets/sent/unreceived');
+        unreceivedSentSheets.value = response.data;
+      } catch (err) {
+        console.error('Error fetching unreceived sent sheets:', err);
+      }
+    };
+    
+    const fetchReceivedSentSheets = async () => {
+      try {
+        // For now, we'll get all sent sheets and filter for received ones
+        const response = await apiClient.get('/routing-sheets/sent');
+        receivedSentSheets.value = response.data.filter(sheet => sheet.status === 'RECEIVED');
+      } catch (err) {
+        console.error('Error fetching received sent sheets:', err);
+      }
+    };
 
-    onMounted(fetchStats);
+    const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      return new Date(dateString).toLocaleDateString();
+    };
+
+    const fetchData = async () => {
+      await Promise.all([
+        fetchStats(),
+        fetchUnreceivedSentSheets(),
+        fetchReceivedSentSheets()
+      ]);
+    };
+
+    onMounted(fetchData);
 
     return {
       stats,
+      unreceivedSentSheets,
+      receivedSentSheets,
+      formatDate
     };
   },
 };
@@ -138,5 +239,63 @@ export default {
   width: 50px;
   background: #007bff;
   border: 1px solid #0056b3;
+}
+
+.section {
+  margin: 2rem 0;
+}
+
+.section h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.data-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.no-data {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.status-received {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
 }
 </style>

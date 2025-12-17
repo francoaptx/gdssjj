@@ -333,6 +333,17 @@ export class RoutingSheetsService {
     });
   }
 
+  async findUnreceivedSentByUser(userId: number): Promise<RoutingSheet[]> {
+    return this.routingSheetsRepository.find({
+      where: { 
+        sender: { id: userId },
+        status: 'PENDING' 
+      },
+      order: { createdAt: 'DESC' },
+      relations: ['sender', 'recipient', 'cite']
+    });
+  }
+
   async findByRecipient(recipientId: number): Promise<RoutingSheet[]> {
     return this.routingSheetsRepository.find({
       where: { recipient: { id: recipientId } },
