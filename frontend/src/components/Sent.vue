@@ -1,294 +1,238 @@
-<!-- src/components/Sent.vue -->
-<template>
-  <div class="sent">
-    <h2>Documentos Enviados</h2>
-    <p>Lista de hojas de ruta enviadas cuyo estado es pendiente de recepción.</p>
-    
-    <div class="controls">
-      <button @click="fetchSentSheets" class="btn btn-primary" :disabled="loading">
-        <span v-if="loading">Cargando...</span>
-        <span v-else>Actualizar</span>
-      </button>
-    </div>
-    
-    <div v-if="loading" class="loading-state">
-      <p>Cargando hojas de ruta enviadas...</p>
-    </div>
+<script setup>
+import { ref, onMounted, computed, onActivated } from 'vue';
+import api from '../services/api';
 
-    <div v-else-if="error" class="error-state">
-      <p>{{ error }}</p>
-      <button @click="fetchSentSheets" class="btn btn-primary">Reintentar</button>
-    </div>
+const sentItems = ref([]);
+const loading = ref(true);
+const error = ref(null);
 
-    <div v-else>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Número</th>
-            <th>Destinatario</th>
-            <th>Referencia</th>
-            <th>Fecha de Envío</th>
-            <th>Prioridad</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="sentSheets.length === 0">
-            <td colspan="6" class="text-center">No tiene hojas de ruta enviadas pendientes de recepción.</td>
-          </tr>
-          <tr v-for="rs in sentSheets" :key="rs.id">
-            <td>{{ rs.number }}</td>
-            <td>{{ rs.recipient ? rs.recipient.name : 'N/A' }}</td>
-            <td>{{ rs.reference || 'Sin referencia' }}</td>
-            <td>{{ formatDate(rs.createdAt) }}</td>
-            <td>
-              <span :class="['priority-badge', rs.priority ? rs.priority.toLowerCase() : '']">
-                {{ getPriorityText(rs.priority) }}
-              </span>
-            </td>
-            <td class="actions-cell">
-              <router-link :to="`/routing-sheets/${rs.id}`" class="btn btn-info btn-sm">Ver Detalle</router-link>
-              <button @click="printSheet(rs)" class="btn btn-secondary btn-sm">Imprimir</button>
-              <button @click="copySheet(rs)" class="btn btn-warning btn-sm">Copia</button>
-              <button @click="cancelSheet(rs.id)" class="btn btn-danger btn-sm">Cancelar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+// Fetch real data from the API
+const fetchSentItems = async () => {
+  try {
+    loading.value = true;
+    // Add timestamp to URL to prevent caching
+    const response = await api.get(`/routing-sheets/sent?t=${new Date().getTime()}`);
+    // Only show items with PENDING status (displayed as "Enviado")
+    sentItems.value = response.data.filter(item => item.status === 'PENDING');
+    error.value = null;
+  } catch (err) {
+    error.value = 'Error al cargar las hojas de ruta enviadas.';
+    console.error('Error fetching sent routing sheets:', err);
+  } finally {
+    loading.value = false;
+  }
+};
 
-    <!-- Modal para copia -->
-    <div v-if="showCopyModal" class="modal-overlay" @click="closeCopyModal">
-      <div class="modal-content" @click.stop>
-        <h3>Enviar Copia de Hoja de Ruta</h3>
-        <p><strong>Hojas de ruta:</strong> {{ copySourceSheet?.number }}</p>
-        <div class="form-group">
-          <label>Seleccionar Destinatarios para la Copia:</label>
-          <div v-for="user in users" :key="user.id" class="checkbox-item">
-            <input 
-              type="checkbox" 
-              :id="'user-' + user.id" 
-              :value="user.id" 
-              v-model="selectedRecipients"
-            >
-            <label :for="'user-' + user.id">{{ user.name }}</label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="copyReference">Referencia para la copia:</label>
-          <input 
-            id="copyReference" 
-            v-model="copyReference" 
-            placeholder="Referencia para la copia" 
-            class="form-control"
-          >
-        </div>
-        <div class="form-group">
-          <label for="copyProvision">Proveído para la copia:</label>
-          <textarea 
-            id="copyProvision" 
-            v-model="copyProvision" 
-            placeholder="Proveído para la copia" 
-            class="form-control"
-          ></textarea>
-        </div>
-        <div class="modal-actions">
-          <button @click="submitCopy" class="btn btn-primary" :disabled="selectedRecipients.length === 0">Enviar Copias</button>
-          <button @click="closeCopyModal" class="btn btn-secondary">Cancelar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
+// Add a method to force refresh the data
+const refreshSentItems = () => {
+  fetchSentItems();
+};
 
-<script>
-import { ref, onMounted } from 'vue';
-import apiClient from '../services/api';
+onMounted(fetchSentItems);
+onActivated(refreshSentItems);
 
-export default {
-  name: 'Sent',
-  setup() {
-    const sentSheets = ref([]);
-    const loading = ref(true);
-    const error = ref(null);
-    
-    // Variables para el modal de copia
-    const showCopyModal = ref(false);
-    const copySourceSheet = ref(null);
-    const selectedRecipients = ref([]);
-    const copyReference = ref('');
-    const copyProvision = ref('');
-    const users = ref([]);
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  return new Date(dateString).toLocaleDateString('es-ES', options);
+};
 
-    const fetchSentSheets = async () => {
-      loading.value = true;
-      error.value = null;
-      try {
-        // Usar el endpoint que obtiene las hojas enviadas no recibidas
-        const sheetsResponse = await apiClient.get(`/routing-sheets/sent/unreceived`);
-        
-        sentSheets.value = sheetsResponse.data;
-      } catch (err) {
-        console.error('Error fetching sent routing sheets:', err);
-        console.error('Error response:', err.response);
-        if (err.response) {
-          error.value = `Error ${err.response.status}: ${err.response.statusText}`;
-        } else {
-          error.value = 'No se pudieron cargar las hojas de ruta enviadas. Intente de nuevo más tarde.';
-        }
-      } finally {
-        loading.value = false;
-      }
-    };
+const getStatusText = (status) => {
+  switch (status) {
+    case 'PENDING':
+      return 'Enviado';
+    case 'RECEIVED':
+      return 'Pendiente';
+    default:
+      return status;
+  }
+};
 
-    const fetchUsers = async () => {
-      try {
-        const response = await apiClient.get('/users');
-        users.value = response.data;
-      } catch (err) {
-        console.error('Error fetching users:', err);
-      }
-    };
+const getPriorityClass = (priority) => {
+  if (!priority) return 'normal';
+  return `priority-${priority.toLowerCase()}`;
+};
 
-    const printSheet = (sheet) => {
-      // Funcionalidad básica de impresión
-      alert(`Funcionalidad de impresión para la hoja de ruta ${sheet.number}. En un implementación completa, esto abriría la hoja de ruta en un formato imprimible.`);
-      // En una implementación real, aquí se abriría una ventana de impresión o se generaría un PDF
-    };
+const getStatusClass = (status) => {
+  if (status === 'PENDING') {
+    return 'enviado';
+  }
+  return '';
+};
 
-    const copySheet = async (sheet) => {
-      copySourceSheet.value = sheet;
-      selectedRecipients.value = [];
-      copyReference.value = sheet.reference || '';
-      copyProvision.value = sheet.provision || '';
-      
-      // Cargar usuarios si no están cargados
-      if (users.value.length === 0) {
-        await fetchUsers();
-      }
-      
-      showCopyModal.value = true;
-    };
-
-    const closeCopyModal = () => {
-      showCopyModal.value = false;
-      copySourceSheet.value = null;
-      selectedRecipients.value = [];
-      copyReference.value = '';
-      copyProvision.value = '';
-    };
-
-    const submitCopy = async () => {
-      if (!copySourceSheet.value || selectedRecipients.value.length === 0) {
-        alert('Debe seleccionar al menos un destinatario para la copia.');
-        return;
-      }
-
-      try {
-        // Crear una copia para cada destinatario seleccionado
-        const copyPromises = selectedRecipients.value.map(recipientId => {
-          return apiClient.post('/copies', {
-            originalRoutingSheetId: copySourceSheet.value.id,
-            recipientId: recipientId,
-            reference: copyReference.value,
-            provision: copyProvision.value
-          });
-        });
-
-        await Promise.all(copyPromises);
-        
-        alert(`Copias enviadas exitosamente a ${selectedRecipients.value.length} destinatario(s).`);
-        closeCopyModal();
-      } catch (err) {
-        console.error('Error sending copies:', err);
-        alert('Hubo un error al enviar las copias. Intente de nuevo.');
-      }
-    };
-
-    const cancelSheet = async (sheetId) => {
-      if (!confirm('¿Está seguro de que desea cancelar esta hoja de ruta? Esta acción no se puede deshacer.')) {
-        return;
-      }
-      
-      try {
-        // Usar el endpoint para cancelar la hoja de ruta
-        await apiClient.patch(`/routing-sheets/${sheetId}/cancel`);
-        
-        // Eliminar la hoja de ruta de la lista local para actualizar la UI
-        sentSheets.value = sentSheets.value.filter(sheet => sheet.id !== sheetId);
-        
-        alert('Hoja de ruta cancelada exitosamente.');
-      } catch (err) {
-        console.error('Error cancelling sheet:', err);
-        if (err.response && err.response.status === 400) {
-          alert('No se puede cancelar esta hoja de ruta. Solo se pueden cancelar hojas de ruta pendientes.');
-        } else {
-          alert('Hubo un error al intentar cancelar la hoja de ruta.');
-        }
-      }
-    };
-
-    const formatDate = (dateString) => {
-      if (!dateString) return 'N/A';
-      const options = { year: 'numeric', month: 'short', day: 'numeric' };
-      return new Date(dateString).toLocaleDateString('es-ES', options);
-    };
-
-    const getPriorityText = (priority) => {
-      const priorityMap = {
-        'HIGH': 'Alta',
-        'NORMAL': 'Normal',
-        'LOW': 'Baja',
-        'URGENT': 'Urgente'
-      };
-      return priorityMap[priority] || priority;
-    };
-
-    onMounted(() => {
-      fetchSentSheets();
-    });
-
-    return {
-      sentSheets,
-      loading,
-      error,
-      formatDate,
-      getPriorityText,
-      fetchSentSheets,
-      printSheet,
-      copySheet,
-      closeCopyModal,
-      submitCopy,
-      cancelSheet,
-      // Variables para el modal de copia
-      showCopyModal,
-      copySourceSheet,
-      selectedRecipients,
-      copyReference,
-      copyProvision,
-      users
-    };
+const cancelSheet = async (id) => {
+  // Ask for user confirmation before cancelling
+  if (!confirm('¿Está seguro de que desea cancelar esta hoja de ruta? Esta acción no se puede deshacer.')) {
+    return; // User cancelled the operation
+  }
+  
+  try {
+    await api.patch(`/routing-sheets/${id}/cancel`);
+    // Refresh the list after cancellation
+    fetchSentItems();
+    alert(`La hoja de ruta ${id} ha sido cancelada.`);
+  } catch (err) {
+    console.error(err);
+    alert('Error al cancelar la hoja de ruta.');
   }
 };
 </script>
 
+<template>
+  <div class="sent">
+    <div class="header">
+      <h2>Hojas de Ruta Enviadas</h2>
+      <button @click="refreshSentItems" class="btn btn-primary btn-sm">
+        Actualizar
+      </button>
+    </div>
+    <div v-if="loading" class="loading-state">Cargando hojas de ruta enviadas...</div>
+    <div v-else-if="error" class="error-state">{{ error }}</div>
+    <div v-else-if="sentItems.length === 0" class="loading-state">No has enviado ninguna hoja de ruta.</div>
+    <table v-else class="table">
+      <thead>
+        <tr>
+          <th>Nro. Hoja de Ruta</th>
+          <th>Referencia</th>
+          <th>Destinatario</th>
+          <th>Fecha de Envío</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+          <th class="text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in sentItems" :key="item.id">
+          <td>{{ item.number }}</td>
+          <td>
+            <div>{{ item.reference }}</div>
+          </td>
+          <td>
+            <div class="recipient-details">{{ item.recipient.name }}</div>
+          </td>
+          <td>{{ formatDate(item.createdAt) }}</td>
+          <td>
+            <span :class="['priority-badge', getPriorityClass(item.priority), getStatusClass(item.status)]">
+              {{ getStatusText(item.status) }}
+            </span>
+          </td>
+          <td class="actions-cell">
+            <button class="btn btn-sm btn-info">Ver</button>
+            <button 
+              v-if="item.status === 'PENDING'" 
+              @click="cancelSheet(item.id)" 
+              class="btn btn-sm btn-danger">
+              Cancelar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</template>
+
 <style scoped>
 .sent { padding: 20px; }
-.sent h2 { margin-top: 0; }
-.controls { margin-bottom: 20px; }
-.table { width: 100%; border-collapse: collapse; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-.table th { background-color: #f8f9fa; font-weight: bold; }
-.text-center { text-align: center; }
-.loading-state, .error-state { text-align: center; padding: 40px; font-size: 1.2rem; color: #6c757d; }
-.error-state { color: #dc3545; }
-.error-state .btn { margin-top: 10px; }
 
-.priority-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
-.priority-badge.normal { background-color: #d1ecf1; color: #0c5460; }
-.priority-badge.urgent { background-color: #f8d7da; color: #721c24; }
-.priority-badge.high { background-color: #f8d7da; color: #721c24; }
-.priority-badge.low { background-color: #e2e3e5; color: #383d41; }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  padding: 16px 12px;
+  text-align: left;
+  color: #495057;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.loading-state, .error-state {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.2rem;
+  color: #6c757d;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.error-state {
+  color: #dc3545;
+}
+
+.priority-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.priority-badge.normal {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.priority-badge.urgent {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.priority-badge.high {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.priority-badge.low {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.priority-badge.enviado,
+.status-cell.enviado {
+  background-color: #ffc107;
+  color: #212529;
+}
 
 .actions-cell {
   display: flex;
@@ -297,6 +241,75 @@ export default {
   justify-content: center;
 }
 
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.recipient-details {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 4px 0;
+  font-style: italic;
+}
+
+.reference-details, .provision-details {
+  font-size: 0.85rem;
+  color: #868e96;
+  margin: 3px 0;
+}
+
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -369,55 +382,40 @@ export default {
   resize: vertical;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.btn {
-  display: inline-block;
-  padding: 8px 16px;
-  border-radius: 4px;
-  text-decoration: none;
-  font-weight: bold;
-  cursor: pointer;
-  border: none;
-  margin-right: 5px;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 4px 8px;
-  font-size: 0.8em;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-info {
-  background-color: #17a2b8;
-  color: white;
-}
-
-.btn-warning {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: white;
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sent {
+    padding: 15px;
+  }
+  
+  .table {
+    font-size: 0.9rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 10px 8px;
+  }
+  
+  .priority-badge {
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    min-width: 70px;
+  }
+  
+  .btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .btn-sm {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+  
+  .actions-cell {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

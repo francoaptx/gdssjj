@@ -97,7 +97,7 @@ export default {
 
     const getStatusText = (status) => {
       const statusMap = {
-        'PENDING': 'Pendiente',
+        'PENDING': 'Enviado',
         'RECEIVED': 'Recibido',
         'PROCESSED': 'Procesado',
         'ARCHIVED': 'Archivado',
@@ -198,7 +198,7 @@ export default {
   font-weight: bold;
 }
 
-.status-badge.pending { background-color: #fff3cd; color: #856404; }
+.status-badge.pending { background-color: #ffc107; color: #212529; }
 .status-badge.received { background-color: #cce5ff; color: #004085; }
 .status-badge.processed { background-color: #d4edda; color: #155724; }
 .status-badge.archived { background-color: #d1ecf1; color: #0c5460; }
