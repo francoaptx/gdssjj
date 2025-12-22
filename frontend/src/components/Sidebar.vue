@@ -11,6 +11,8 @@
       <router-link to="/archive">Archivo</router-link> 
       <router-link to="/history">Historial</router-link> 
       <router-link to="/users">Usuarios</router-link>
+      <!-- Enlace temporal para pruebas de PrimeVue -->
+      <router-link to="/test-primevue">Test PrimeVue</router-link>
       <div class="admin-section" v-if="isAdmin">
         <hr>
         <h3>Administración</h3>

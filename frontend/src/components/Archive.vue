@@ -1,107 +1,91 @@
 <!-- src/components/Archive.vue -->
 <template>
-  <div class="archive">
-    <h2>Bandeja de Archivados</h2>
-    <p>Estas son las hojas de ruta que han sido archivadas por usted.</p>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Número</th>
-          <th>Remitente</th>
-          <th>Referencia</th>
-          <th>Carpeta</th>
-          <th>Fecha Archivado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="rs in archivedRoutingSheets" :key="rs.id">
-          <td>{{ rs.number }}</td>
-          <td>{{ rs.sender.name }}</td>
-          <td>{{ rs.reference }}</td>
-          <td>{{ rs.archivedFolder?.name || 'N/A' }}</td>
-          <td>{{ rs.archivedAt ? formatDate(rs.archivedAt) : 'N/A' }}</td>
-          <td>
-            <button @click="unarchiveRS(rs.id)" class="btn btn-warning">Desarchivar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="archive-container">
+    <div class="archive-list">
+      <BaseList
+        title="Hojas de Ruta Archivadas"
+        :items="archivedItems"
+        :loading="loading"
+        :error="error"
+        :columns="columns"
+        :actions="actions"
+        @refresh="fetchArchivedItems"
+        @action="handleAction"
+      />
+    </div>
   </div>
 </template>
 
-<script>
-import { ref, onMounted } from 'vue';
-import apiClient from '../services/api';
+<script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useStore } from 'vuex';
+import { useRoutingSheetsStore } from '../store/routingSheets';
+import BaseList from './BaseList.vue';
 
-export default {
-  name: 'Archive',
-  setup() {
-    const archivedRoutingSheets = ref([]);
+const store = useStore();
+const routingSheetsStore = useRoutingSheetsStore();
+const user = computed(() => store.getters.user);
 
-    const fetchArchivedRoutingSheets = async () => {
-      try {
-        // V.2: Obtener hojas de ruta archivadas por el usuario
-        const response = await apiClient.get('/routing-sheets/archived');
-        archivedRoutingSheets.value = response.data;
-      } catch (err) {
-        console.error('Error fetching archived routing sheets:', err);
-      }
-    };
+// Use data from Pinia store
+const archivedItems = computed(() => routingSheetsStore.archivedItems);
+const loading = computed(() => routingSheetsStore.loading);
+const error = computed(() => routingSheetsStore.error);
 
-    const unarchiveRS = async (id) => {
-        if (!confirm('¿Está seguro de que desea desarchivar esta hoja de ruta? Volverá a la bandeja de pendientes.')) return;
-        try {
-            await apiClient.put(`/routing-sheets/${id}/unarchive`);
-            // Recargar la lista
-            fetchArchivedRoutingSheets();
-        } catch (err) {
-            console.error('Error unarchiving routing sheet:', err);
-            alert('Error al desarchivar la hoja de ruta.');
-        }
-    };
+const columns = [
+  { field: 'number', header: 'Nro. Hoja de Ruta', sortable: true },
+  { field: 'reference', header: 'Referencia', sortable: true },
+  { field: 'sender', header: 'Remitente', type: 'sender', sortable: true },
+  { field: 'createdAt', header: 'Fecha de Envío', type: 'date', sortable: true },
+  { field: 'priority', header: 'Prioridad', type: 'priority', sortable: true },
+  { field: 'status', header: 'Estado', type: 'status', sortable: true }
+];
 
-    const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString();
-    };
+const actions = [
+  { 
+    name: 'view', 
+    icon: 'pi pi-eye', 
+    class: 'p-button-info p-button-rounded p-button-sm', 
+    title: 'Ver detalles' 
+  }
+];
 
-    onMounted(fetchArchivedRoutingSheets);
-
-    return {
-      archivedRoutingSheets,
-      unarchiveRS,
-      formatDate,
-    };
-  },
+const fetchArchivedItems = async () => {
+  try {
+    await routingSheetsStore.fetchArchivedItems();
+  } catch (err) {
+    console.error('Error fetching archived items:', err);
+  }
 };
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString('es-ES', options);
+};
+
+const handleAction = async ({ action, item }) => {
+  if (action === 'view') {
+    // Handle view action
+    console.log('View item:', item);
+  }
+};
+
+onMounted(fetchArchivedItems);
 </script>
 
 <style scoped>
-/* Reutiliza estilos de Reception.vue */
-.table {
+.archive-container {
   width: 100%;
-  border-collapse: collapse;
+  height: 100%;
 }
 
-.table th, .table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
+.archive-list {
+  padding: 20px;
 }
 
-.table th {
-  background-color: #f2f2f2;
+@media (max-width: 768px) {
+  .archive-list {
+    padding: 15px;
+  }
 }
-
-.btn {
-  padding: 0.25rem 0.5rem;
-  margin-right: 0.25rem;
-  text-decoration: none;
-  border-radius: 4px;
-  cursor: pointer;
-  border: none;
-  font-size: 0.875rem;
-}
-
-.btn-warning { background-color: #ffc107; color: #212529; }
 </style>

@@ -1,0 +1,121 @@
+/* Basic PrimeVue Theme Overrides */
+:root {
+  --primary-color: #007bff;
+  --primary-color-text: #ffffff;
+  --surface-card: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-border: #dee2e6;
+  --surface-hover: #e9ecef;
+  --focus-ring: 0 0 0 0.2rem rgba(38, 143, 255, 0.5);
+  --maskbg: rgba(0, 0, 0, 0.4);
+  --highlight-bg: #007bff;
+  --highlight-text-color: #ffffff;
+}
+
+/* Button styles */
+.p-button {
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.p-button.p-button-primary {
+  background: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color-text);
+}
+
+.p-button.p-button-primary:hover {
+  background: #0069d9;
+  border-color: #0062cc;
+  color: var(--primary-color-text);
+}
+
+/* Data table styles */
+.p-datatable .p-datatable-header {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #e9ecef;
+  border-width: 1px 0 1px 0;
+  padding: 1rem 1rem;
+  font-weight: 600;
+}
+
+.p-datatable .p-sortable-column .p-sortable-column-icon {
+  color: #6c757d;
+}
+
+.p-datatable .p-sortable-column:not(.p-highlight):hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.p-datatable .p-sortable-column:not(.p-highlight):hover .p-sortable-column-icon {
+  color: #6c757d;
+}
+
+.p-datatable .p-sortable-column.p-highlight {
+  background: #f8f9fa;
+  color: var(--primary-color);
+}
+
+.p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon {
+  color: var(--primary-color);
+}
+
+.p-datatable .p-datatable-tbody > tr {
+  background: #ffffff;
+  color: #495057;
+  transition: box-shadow 0.2s;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  border: 1px solid #e9ecef;
+  border-width: 0 0 1px 0;
+  padding: 1rem 1rem;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.p-datatable .p-datatable-tbody > tr.p-highlight {
+  background: #007bff;
+  color: #ffffff;
+}
+
+/* Tag styles */
+.p-tag {
+  background: #6c757d;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.p-tag.p-tag-success {
+  background-color: #28a745;
+  color: #ffffff;
+}
+
+.p-tag.p-tag-info {
+  background-color: #17a2b8;
+  color: #ffffff;
+}
+
+.p-tag.p-tag-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.p-tag.p-tag-danger {
+  background-color: #dc3545;
+  color: #ffffff;
+}
+
+.p-tag.p-tag-secondary {
+  background-color: #6c757d;
+  color: #ffffff;
+}

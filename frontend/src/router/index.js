@@ -21,6 +21,8 @@ import UserManagement from '../components/UserManagement.vue';
 import OfficeManagement from '../components/OfficeManagement.vue';
 import PositionManagement from '../components/PositionManagement.vue';
 import TestForm from '../components/TestForm.vue'; // Nuevo componente de prueba
+import TestPrimeVue from '../components/TestPrimeVue.vue'; // Componente de prueba para PrimeVue
+import TestComponent from '../components/TestComponent.vue'; // Componente de prueba simple
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -41,6 +43,8 @@ const routes = [
   { path: '/admin/offices', component: OfficeManagement, meta: { requiresAuth: true } },
   { path: '/admin/positions', component: PositionManagement, meta: { requiresAuth: true } },
   { path: '/test-form', component: TestForm, meta: { requiresAuth: true } }, // Ruta de prueba
+  { path: '/test-primevue', component: TestPrimeVue, meta: { requiresAuth: true } }, // Ruta de prueba para PrimeVue
+  { path: '/test-component', component: TestComponent, meta: { requiresAuth: true } } // Ruta de prueba simple
 ];
 
 const router = createRouter({

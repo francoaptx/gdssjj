@@ -1,0 +1,85 @@
+/* Status and Priority Styles - Unified with Global Styles */
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25em 0.4em;
+  font-size: 75%;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
+  min-width: 80px;
+}
+
+.status-badge.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.status-received {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.status-badge.status-processed {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.status-archived {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.status-badge.status-cancelled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Priority badges */
+.priority-badge {
+  display: inline-block;
+  padding: 0.25em 0.4em;
+  font-size: 75%;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
+  min-width: 70px;
+}
+
+.priority-badge.priority-urgent {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.priority-badge.priority-high {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.priority-badge.priority-normal {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.priority-badge.priority-low {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .status-badge, .priority-badge {
+    font-size: 0.7rem;
+    padding: 0.2em 0.3em;
+    min-width: 60px;
+  }
+}

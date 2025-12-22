@@ -393,25 +393,6 @@ export default {
 .btn-info { background-color: #17a2b8; color: white; }
 .btn-danger { background-color: #dc3545; color: white; }
 
-.status-badge, .priority-badge {
-  padding: 0.25em 0.4em;
-  font-size: 75%;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: 0.25rem;
-}
-
-.status-badge.pending { background-color: #fff3cd; color: #856404; }
-.status-badge.received { background-color: #cce5ff; color: #004085; }
-.status-badge.processed { background-color: #d4edda; color: #155724; }
-.status-badge.archived { background-color: #d1ecf1; color: #0c5460; }
-.status-badge.cancelled { background-color: #f8d7da; color: #721c24; }
-
-.priority-badge.normal { background-color: #e2e3e5; color: #383d41; }
-.priority-badge.urgent { background-color: #f8d7da; color: #721c24; }
 
 .loading {
   text-align: center;

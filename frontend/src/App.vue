@@ -2,7 +2,7 @@
   <div id="app">
     <Header />
     <div class="app-container">
-      <Sidebar v-if="isAuthenticated" />
+      <Sidebar v-if="isAuthenticated" class="sidebar" />
       <main class="main-content" :class="{ 'full-width': !isAuthenticated }">
         <router-view />
       </main>
@@ -11,8 +11,6 @@
 </template>
 
 <script>
-import { computed, onMounted } from 'vue';
-import { useStore } from 'vuex';
 import Header from './components/Header.vue';
 import Sidebar from './components/Sidebar.vue';
 
@@ -22,54 +20,60 @@ export default {
     Header,
     Sidebar
   },
-  setup() {
-    const store = useStore();
-    const isAuthenticated = computed(() => store.getters.isAuthenticated);
-
+  computed: {
+    isAuthenticated() {
+      return this.$store.getters.isAuthenticated;
+    }
+  },
+  mounted() {
     // 初始化认证状态
-    onMounted(() => {
-      store.dispatch('initializeAuth');
-    });
-    
-    return {
-      isAuthenticated
-    };
+    this.$store.dispatch('initializeAuth');
   }
 };
 </script>
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-container {
   display: flex;
+  flex: 1;
   min-height: calc(100vh - 60px); /* Ajustar según la altura del header */
+}
+
+.sidebar {
+  flex-shrink: 0;
+  z-index: 1000; /* Asegurar que el sidebar esté por debajo de otros elementos si es necesario */
 }
 
 .main-content {
   flex: 1;
-  padding: 1rem;
-  background-color: #f5f5f5;
+  padding: 20px;
+  transition: margin-left 0.3s ease;
 }
 
 .main-content.full-width {
+  margin-left: 0;
   width: 100%;
 }
 
-/* Responsive sidebar */
+/* Ajustar el layout cuando hay sidebar */
+.app-container .sidebar + .main-content {
+  margin-left: 200px; /* Ancho del sidebar */
+}
+
+/* Ajustar para pantallas pequeñas */
 @media (max-width: 768px) {
   .app-container {
     flex-direction: column;
   }
   
   .main-content {
-    width: 100%;
+    margin-left: 0 !important;
   }
 }
 </style>
