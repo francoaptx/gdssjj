@@ -27,7 +27,7 @@ export const useRoutingSheetsStore = defineStore('routingSheets', {
       this.error = null;
       
       try {
-        const response = await api.get('/routing-sheets/sent/unreceived');
+        const response = await api.get('/routing-sheets/sent');
         this.sentItems = response.data;
       } catch (error) {
         this.error = error.message || 'Error al cargar las hojas de ruta enviadas';
@@ -44,7 +44,6 @@ export const useRoutingSheetsStore = defineStore('routingSheets', {
       this.error = null;
       
       try {
-        // Usar un endpoint alternativo que funcione en lugar de /inbox
         const response = await api.get('/routing-sheets/received');
         this.receivedItems = response.data;
       } catch (error) {
@@ -62,7 +61,7 @@ export const useRoutingSheetsStore = defineStore('routingSheets', {
       this.error = null;
       
       try {
-        const response = await api.get('/routing-sheets/received');
+        const response = await api.get('/routing-sheets/pending');
         this.processingItems = response.data;
       } catch (error) {
         this.error = error.message || 'Error al cargar las hojas de ruta en procesamiento';

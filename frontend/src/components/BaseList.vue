@@ -82,9 +82,12 @@ const getPriorityText = (priority) => {
 };
 
 const getStatusSeverity = (status) => {
+  // Manejar el caso especial donde el texto es "No recibido" para el estado PENDING
+  if (status === 'PENDING' || (typeof status === 'string' && status === 'No recibido')) {
+    return 'warning';
+  }
+  
   switch (status) {
-    case 'PENDING':
-      return 'warning';
     case 'RECEIVED':
       return 'info';
     case 'PROCESSED':
@@ -100,7 +103,7 @@ const getStatusSeverity = (status) => {
 
 const getStatusText = (status) => {
   const statusMap = {
-    'PENDING': 'Pendiente',
+    'PENDING': 'No recibido',
     'RECEIVED': 'Recibido',
     'PROCESSED': 'Procesado',
     'ARCHIVED': 'Archivado',

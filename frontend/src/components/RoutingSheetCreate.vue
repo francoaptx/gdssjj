@@ -4,15 +4,10 @@
     <h2>Crear Nueva Hoja de Ruta</h2>
     <form @submit.prevent="onSubmit" class="rs-form">
       <div class="form-group">
-        <label for="generatedNumber">Número de Hoja de Ruta (Autogenerado):</label>
-        <input v-model="generatedNumber" type="text" id="generatedNumber" readonly class="readonly-field" />
-      </div>
-
-      <div class="form-group">
         <label for="recipientId">Destinatario:</label>
         <select v-model="recipientId" id="recipientId" required>
           <option value="">Seleccione un destinatario</option>
-          <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} ({{ user.office.name }})</option>
+          <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} - {{ user.position.name }} - {{ user.office.name }}</option>
         </select>
       </div>
       <div class="form-group">
@@ -74,12 +69,12 @@
             <label for="newCopyRecipient">Destinatario de Copia:</label>
             <select v-model="newCopyRecipientId" id="newCopyRecipient">
               <option value="">Seleccione un destinatario</option>
-              <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} ({{ user.office.name }})</option>
+              <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} - {{ user.position.name }} - {{ user.office.name }}</option>
             </select>
           </div>
           <div class="form-group">
             <label for="newCopyProvision">Proveído:</label>
-            <input v-model="newCopyProvision" type="text" id="newCopyProvision" />
+            <textarea v-model="newCopyProvision" type="text" id="newCopyProvision"> </textarea>
           </div>
         </div>
         <button type="button" @click="addCopy">Agregar Copia</button>
@@ -95,6 +90,7 @@
       </div>
       <button type="submit">Crear Hoja de Ruta</button>
       <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="successMessage" class="success">{{ successMessage }}</p>
     </form>
   </div>
 </template>
@@ -124,16 +120,45 @@ export default {
     const users = ref([]);
     const cites = ref([]);
     const generatedNumber = ref('');
+    const successMessage = ref('');
 
     // Generate cite number when "hasCite" is checked
-    const generateCiteNumber = () => {
+    const generateCiteNumber = async () => {
       if (hasCite.value) {
-        // Generate a cite number following the same format as the backend
-        const year = new Date().getFullYear();
-        // For demo purposes, we'll use a fixed number
-        // In a real implementation, this would ideally come from the backend
-        const correlativo = '0001'; // Placeholder
-        citeNumber.value = `HR-CITE-${correlativo}-${year}`;
+        try {
+          // First, try to get a cite number from the backend
+          const response = await apiClient.get('/cites/generate-number');
+          citeNumber.value = response.data.number;
+        } catch (err) {
+          console.error('Error generating cite number from backend:', err);
+          
+          try {
+            // If the backend endpoint fails, calculate the next correlativo from existing cites
+            const citesResponse = await apiClient.get('/cites');
+            const existingCites = citesResponse.data;
+            
+            // Filter cites from the current year
+            const currentYear = new Date().getFullYear();
+            const currentYearCites = existingCites.filter(cite => {
+              const citeYear = new Date(cite.createdAt).getFullYear();
+              return citeYear === currentYear;
+            });
+            
+            // Calculate next correlativo
+            const nextCorrelativo = currentYearCites.length + 1;
+            const formattedCorrelativo = String(nextCorrelativo).padStart(4, '0');
+            
+            // Set the cite number with the correct format
+            citeNumber.value = `HR-CITE-${formattedCorrelativo}-${currentYear}`;
+          } catch (localErr) {
+            console.error('Error calculating cite number locally:', localErr);
+            error.value = 'Error al generar el número de cite. Por favor, inténtelo más tarde.';
+            
+            // Fallback: generate a temporary number in case of error
+            const year = new Date().getFullYear();
+            citeNumber.value = `HR-CITE-0001-${year}`;
+          }
+        }
       } else {
         citeNumber.value = '';
       }
@@ -197,40 +222,67 @@ export default {
 
     const onSubmit = async () => {
       try {
+        // Prepare form data to include file
         const formData = new FormData();
-            
-            // Enviar datos como JSON en el cuerpo de la solicitud
-            const requestData = {
-              reference: reference.value,
-              recipientId: parseInt(recipientId.value),
-              provision: provision.value,
-              numberOfPages: numberOfPages.value,
-              numberOfAttachments: numberOfAttachments.value,
-              hasCite: hasCite.value,
-              priority: priority.value,
-              copies: copies.value.map(copy => ({
-                recipientId: parseInt(copy.recipientId),
-                provision: copy.provision,
-              }))
-            };
-
-            // Agregar citeId si hay un cite seleccionado
-            if (hasCite.value && cites.value.length > 0) {
-              requestData.citeId = cites.value[0].id;
-            }
-
-            const response = await apiClient.post('/routing-sheets', requestData, {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-
-            router.push('/routing-sheets');
-          } catch (err) {
-            error.value = 'Error al crear la hoja de ruta';
-            console.error('Error creating routing sheet:', err);
+        
+        // Add all form fields to FormData
+        formData.append('recipientId', recipientId.value.toString());
+        formData.append('reference', reference.value);
+        formData.append('provision', provision.value);
+        formData.append('numberOfPages', numberOfPages.value.toString());
+        formData.append('numberOfAttachments', numberOfAttachments.value.toString());
+        formData.append('hasCite', hasCite.value.toString());
+        formData.append('priority', priority.value);
+        
+        // Add the main file if exists
+        if (file.value) {
+          formData.append('file', file.value, file.value.name);
+        }
+        
+        // Add the cite file if exists
+        if (citeFile.value) {
+          formData.append('citeFile', citeFile.value, citeFile.value.name);
+        }
+        
+        // Submit the form data
+        const response = await apiClient.post('/routing-sheets', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
           }
-        };
+        });
+        
+        // Show success message with the generated number
+        successMessage.value = `Hoja de ruta creada exitosamente con número: ${response.data.number}`;
+        error.value = null;
+        
+        // Reset form
+        resetForm();
+        
+        // Redirect to dashboard after a delay
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 2000);
+      } catch (err) {
+        console.error('Error creating routing sheet:', err);
+        error.value = err.response?.data?.message || 'Error al crear la hoja de ruta';
+      }
+    };
+
+    const resetForm = () => {
+      reference.value = '';
+      recipientId.value = '';
+      provision.value = '';
+      numberOfPages.value = null;
+      numberOfAttachments.value = null;
+      hasCite.value = false;
+      citeNumber.value = '';
+      citeFile.value = null;
+      priority.value = 'NORMAL';
+      file.value = null;
+      copies.value = [];
+      newCopyRecipientId.value = '';
+      newCopyProvision.value = '';
+    };
 
     return {
       reference,

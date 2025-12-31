@@ -9,6 +9,6 @@ import { UsersModule } from '../users/users.module'; // Para obtener el usuario 
   imports: [TypeOrmModule.forFeature([Cite]), UsersModule],
   providers: [CitesService],
   controllers: [CitesController],
-  exports: [CitesService],
+  exports: [CitesService, TypeOrmModule], // Exportar TypeOrmModule para que el repositorio esté disponible
 })
 export class CitesModule {}

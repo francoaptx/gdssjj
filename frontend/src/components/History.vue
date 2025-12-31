@@ -18,25 +18,38 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
-import { useRoutingSheetsStore } from '../store/routingSheets';
+import apiClient from '../services/api';
 import BaseList from './BaseList.vue';
 
 const store = useStore();
-const routingSheetsStore = useRoutingSheetsStore();
 const user = computed(() => store.getters.user);
 
-// Use data from Pinia store
-const historyItems = computed(() => routingSheetsStore.archivedItems); // Using archived items for history
-const loading = computed(() => routingSheetsStore.loading);
-const error = computed(() => routingSheetsStore.error);
+// Use data from API directly for history
+const historyItems = ref([]);
+const loading = ref(false);
+const error = ref(null);
+
+const fetchHistoryItems = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    const response = await apiClient.get('/history/user');
+    historyItems.value = response.data;
+  } catch (err) {
+    console.error('Error fetching history items:', err);
+    error.value = err.message || 'Error al cargar el historial';
+    historyItems.value = []; // Ensure we have an empty array in case of error
+  } finally {
+    loading.value = false;
+  }
+};
 
 const columns = [
-  { field: 'number', header: 'Nro. Hoja de Ruta', sortable: true },
-  { field: 'reference', header: 'Referencia', sortable: true },
-  { field: 'sender', header: 'Remitente', type: 'sender', sortable: true },
-  { field: 'createdAt', header: 'Fecha de Envío', type: 'date', sortable: true },
-  { field: 'priority', header: 'Prioridad', type: 'priority', sortable: true },
-  { field: 'status', header: 'Estado', type: 'status', sortable: true }
+  { field: 'routingSheet.number', header: 'Nro. Hoja de Ruta', sortable: true },
+  { field: 'routingSheet.reference', header: 'Referencia', sortable: true },
+  { field: 'user.name', header: 'Usuario', sortable: true },
+  { field: 'timestamp', header: 'Fecha', type: 'date', sortable: true },
+  { field: 'action', header: 'Acción', sortable: true }
 ];
 
 const actions = [
@@ -49,26 +62,12 @@ const actions = [
   }
 ];
 
-const fetchHistoryItems = async () => {
-  try {
-    await routingSheetsStore.fetchArchivedItems(); // Using archived items for history
-  } catch (err) {
-    console.error('Error fetching history items:', err);
-  }
+const handleAction = (data) => {
+  console.log('Action:', data);
 };
 
-const handleAction = async ({ action, item }) => {
-  if (action === 'view') {
-    // Handle view action
-    console.log('View item:', item);
-  }
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  const options = { year: 'numeric', month: 'short', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString('es-ES', options);
-};
+// Fetch data when component is mounted
+fetchHistoryItems();
 </script>
 
 <style scoped>
@@ -78,12 +77,12 @@ const formatDate = (dateString) => {
 }
 
 .history-list {
-  padding: 20px;
+  padding: 1.5rem;
 }
 
 @media (max-width: 768px) {
   .history-list {
-    padding: 15px;
+    padding: 1rem;
   }
 }
 </style>

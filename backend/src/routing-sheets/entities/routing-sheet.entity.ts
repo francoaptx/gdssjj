@@ -84,6 +84,12 @@ export class RoutingSheet {
   @Column({ nullable: true })
   priority: string;
 
+  @Column({ nullable: true })
+  fileUrl?: string;
+
+  @Column({ nullable: true })
+  citeFileUrl?: string;
+
   @Column({ default: false })
   hasCite: boolean;
 

@@ -112,43 +112,46 @@ export default {
     const loadingUnreceived = ref(true);
     const loadingReceived = ref(true);
     
-    // Función para manejar las solicitudes con timeout
-    const fetchWithTimeout = async (url, timeout = 5000) => {
+    // Función para manejar las solicitudes con manejo de errores
+    const fetchWithErrorHandling = async (url) => {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-        
-        const response = await apiClient.get(url, {
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        return response;
-      } catch (error) {
-        if (error.code === 'ERR_CANCELED' || error.name === 'AbortError') {
-          console.warn(`Request to ${url} timed out`);
+        const response = await apiClient.get(url);
+        // Verificar que la respuesta sea válida
+        if (response && response.data) {
+          return response;
         } else {
-          console.warn(`Request to ${url} failed:`, error.message);
+          console.warn(`Invalid response from ${url}:`, response);
+          return { data: [] }; // Devolver un objeto con data vacío en lugar de null
         }
+      } catch (error) {
+        // Para el endpoint específico de inbox, solo mostrar un mensaje de depuración
+        if (url === '/routing-sheets/inbox') {
+          console.debug(`Error fetching from ${url} (this might be expected):`, error.message);
+        } else {
+          console.error(`Error fetching from ${url}:`, error.message);
+        }
+        // Devolver un objeto con data vacío para evitar errores
         return { data: [] };
       }
     };
     
     const fetchStats = async () => {
       try {
-        // Intentar solo las solicitudes que probablemente funcionen con manejo de errores
-        const [inboxRes, pendingRes, sentRes, archivedRes] = await Promise.allSettled([
-          fetchWithTimeout('/routing-sheets/inbox'),
-          fetchWithTimeout('/routing-sheets/pending'),
-          fetchWithTimeout('/routing-sheets/sent'),
-          fetchWithTimeout('/routing-sheets/archived')
+        // Intentar las solicitudes con manejo de errores individual
+        const inboxPromise = fetchWithErrorHandling('/routing-sheets/inbox');
+        const pendingPromise = fetchWithErrorHandling('/routing-sheets/pending');
+        const sentPromise = fetchWithErrorHandling('/routing-sheets/sent');
+        const archivedPromise = fetchWithErrorHandling('/routing-sheets/archived');
+        
+        const [inboxRes, pendingRes, sentRes, archivedRes] = await Promise.all([
+          inboxPromise, pendingPromise, sentPromise, archivedPromise
         ]);
         
         stats.value = {
-          inboxCount: inboxRes.status === 'fulfilled' ? inboxRes.value.data.length : 0,
-          pendingCount: pendingRes.status === 'fulfilled' ? pendingRes.value.data.length : 0,
-          sentCount: sentRes.status === 'fulfilled' ? sentRes.value.data.length : 0,
-          archivedCount: archivedRes.status === 'fulfilled' ? archivedRes.value.data.length : 0
+          inboxCount: Array.isArray(inboxRes.data) ? inboxRes.data.length : 0,
+          pendingCount: Array.isArray(pendingRes.data) ? pendingRes.data.length : 0,
+          sentCount: Array.isArray(sentRes.data) ? sentRes.data.length : 0,
+          archivedCount: Array.isArray(archivedRes.data) ? archivedRes.data.length : 0
         };
       } catch (err) {
         console.error('Error fetching stats:', err);
@@ -164,8 +167,9 @@ export default {
     
     const fetchUnreceivedSentSheets = async () => {
       try {
-        const response = await fetchWithTimeout('/routing-sheets/sent/unreceived');
-        unreceivedSentSheets.value = response.data;
+        const response = await fetchWithErrorHandling('/routing-sheets/sent/unreceived');
+        // Verificar que response.data sea un array antes de asignarlo
+        unreceivedSentSheets.value = Array.isArray(response.data) ? response.data : [];
       } catch (err) {
         console.error('Error fetching unreceived sent sheets:', err);
         unreceivedSentSheets.value = [];
@@ -176,9 +180,9 @@ export default {
     
     const fetchReceivedSentSheets = async () => {
       try {
-        // Usar endpoint existente que funcione
-        const response = await fetchWithTimeout('/routing-sheets/sent');
-        receivedSentSheets.value = response.data.filter(sheet => sheet.status === 'RECEIVED');
+        const response = await fetchWithErrorHandling('/routing-sheets/sent');
+        // Filtrar documentos recibidos, verificar que response.data sea un array
+        receivedSentSheets.value = Array.isArray(response.data) ? response.data.filter(sheet => sheet && sheet.status === 'RECEIVED') : [];
       } catch (err) {
         console.error('Error fetching received sent sheets:', err);
         receivedSentSheets.value = [];

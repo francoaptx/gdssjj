@@ -9,7 +9,9 @@ import { User } from '../users/entities/user.entity';
 import { Cite } from '../cites/entities/cite.entity';
 import { Folder } from '../folders/entities/folder.entity';
 import { CopiesService } from '../copies/copies.service';
-
+import { diskStorage } from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
 
 @Injectable()
 export class RoutingSheetsService {
@@ -27,7 +29,7 @@ export class RoutingSheetsService {
     private copiesService: CopiesService,
   ) {}
 
-  async create(createRoutingSheetDto: CreateRoutingSheetDto, senderId: number): Promise<RoutingSheet> {
+  async create(createRoutingSheetDto: CreateRoutingSheetDto, senderId: number, file?: Express.Multer.File, citeFile?: Express.Multer.File): Promise<RoutingSheet> {
     // Verificar que el remitente existe
     const sender = await this.usersRepository.findOne({ where: { id: senderId } });
     if (!sender) {
@@ -69,7 +71,7 @@ export class RoutingSheetsService {
         number: citeNumber,
         subject: createRoutingSheetDto.reference || 'Sin referencia',
         createdBy: sender,
-        isUploaded: false, // Initially not uploaded
+        isUploaded: !!citeFile, // Marcamos como subido si se proporcionó archivo cite
         createdAt: new Date(),
       });
       cite = await this.citesRepository.save(cite);
@@ -88,6 +90,23 @@ export class RoutingSheetsService {
     // Formato: HR-XXXX-YYYY (XXXX es número secuencial, YYYY es el año)
     const routingSheetNumber = `HR-${String(count + 1).padStart(4, '0')}-${year}`;
 
+    // Preparar la ruta del archivo si se subió uno
+    let fileUrl: string | undefined;
+    if (file) {
+      fileUrl = `/uploads/routing-sheets/${file.filename}`;
+    }
+
+    // Preparar la ruta del archivo cite si se subió uno
+    let citeFileUrl: string | undefined;
+    if (citeFile) {
+      citeFileUrl = `/uploads/routing-sheets/${citeFile.filename}`;
+      // Si hay un cite y se subió un archivo, actualizar el cite como subido
+      if (cite) {
+        cite.isUploaded = true;
+        await this.citesRepository.save(cite);
+      }
+    }
+
     // Crear la hoja de ruta
     const routingSheet = this.routingSheetsRepository.create({
       number: routingSheetNumber,
@@ -99,25 +118,17 @@ export class RoutingSheetsService {
       attachments: createRoutingSheetDto.attachments,
       cite: cite || null,
       numberOfPages: createRoutingSheetDto.numberOfPages,
-      numberOfAttachments: createRoutingSheetDto.numberOfAttachments,
-      hasCite: createRoutingSheetDto.hasCite,
-      priority: createRoutingSheetDto.priority,
-      status: 'PENDING',
-      createdAt: new Date(),
+      numberOfAttachments: createRoutingSheetDto.numberOfAttachments || 0,
+      priority: createRoutingSheetDto.priority || 'NORMAL',
+      status: 'PENDING', // Estado inicial
+      fileUrl,
+      citeFileUrl,
     });
 
     const savedRoutingSheet = await this.routingSheetsRepository.save(routingSheet);
 
     // Registrar en el historial
-    await this.historyService.logAction(savedRoutingSheet.id, senderId, 'SENT');
-
-    // Crear copias si existen
-    if (createRoutingSheetDto.copies && createRoutingSheetDto.copies.length > 0) {
-      for (const copyDto of createRoutingSheetDto.copies) {
-        await this.copiesService.create(savedRoutingSheet.id, copyDto.recipientId, copyDto.provision);
-      }
-    }
-
+    await this.historyService.logAction(savedRoutingSheet.id, senderId, 'CREATED');
 
     return savedRoutingSheet;
   }

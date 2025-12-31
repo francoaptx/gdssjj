@@ -1,5 +1,6 @@
 // src/routing-sheets/routing-sheets.controller.ts
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Query, Patch, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { RoutingSheetsService } from './routing-sheets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User as CurrentUser } from '../common/decorators/user.decorator';
@@ -12,8 +13,19 @@ export class RoutingSheetsController {
   constructor(private readonly routingSheetsService: RoutingSheetsService) {}
 
   @Post()
-  create(@Body() createRoutingSheetDto: CreateRoutingSheetDto, @CurrentUser() user: any) {
-    return this.routingSheetsService.create(createRoutingSheetDto, user.userId);
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'file', maxCount: 1 },
+    { name: 'citeFile', maxCount: 1 }
+  ]))
+  create(
+    @Body() createRoutingSheetDto: CreateRoutingSheetDto, 
+    @UploadedFiles() files: { file?: Express.Multer.File, citeFile?: Express.Multer.File },
+    @CurrentUser() user: any
+  ) {
+    const file = files?.file?.[0];
+    const citeFile = files?.citeFile?.[0];
+    
+    return this.routingSheetsService.create(createRoutingSheetDto, user.userId, file, citeFile);
   }
 
   @Get()

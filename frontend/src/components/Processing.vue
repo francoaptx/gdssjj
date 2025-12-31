@@ -76,6 +76,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../services/api';
 import BaseList from './BaseList.vue';
+import { useRoutingSheetsStore } from '../store/routingSheets';
 
 export default {
   name: 'Processing',
@@ -84,7 +85,9 @@ export default {
   },
   setup() {
     const router = useRouter();
-    const pendingRoutingSheets = ref([]);
+    const routingSheetsStore = useRoutingSheetsStore();
+    
+    const pendingRoutingSheets = computed(() => routingSheetsStore.processingItems);
     const showProcessModal = ref(false);
     const showGroupModal = ref(false);
     const processingRS = ref(null);
@@ -98,20 +101,15 @@ export default {
     const selectedForGrouping = ref([]);
     const allSelected = ref(false);
     const mainRSHId = ref('');
-    const loading = ref(false);
-    const error = ref(null);
+    const loading = computed(() => routingSheetsStore.loading);
+    const error = computed(() => routingSheetsStore.error);
 
     const fetchPendingRoutingSheets = async () => {
-      loading.value = true;
-      error.value = null;
       try {
-        const response = await apiClient.get('/routing-sheets/received');
-        pendingRoutingSheets.value = response.data;
+        await routingSheetsStore.fetchProcessingItems();
       } catch (err) {
         console.error('Error fetching pending routing sheets:', err);
         error.value = 'Error al cargar las hojas de ruta pendientes';
-      } finally {
-        loading.value = false;
       }
     };
 
@@ -153,7 +151,7 @@ export default {
                     return;
                 }
                 await apiClient.put(`/routing-sheets/${processingRS.value.id}/process`, {
-                    newRecipientId: parseInt(newRecipientId.value),
+                    recipientId: parseInt(newRecipientId.value),
                     provision: provision.value,
                 });
             } else if (processAction.value === 'archive') {

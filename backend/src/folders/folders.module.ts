@@ -10,6 +10,6 @@ import { UsersModule } from '../users/users.module';
   imports: [TypeOrmModule.forFeature([Folder]), UsersModule],
   providers: [FoldersService],
   controllers: [FoldersController],
-  exports: [FoldersService],
+  exports: [FoldersService, TypeOrmModule], // Exportar TypeOrmModule para que el repositorio esté disponible
 })
 export class FoldersModule {}

@@ -40,7 +40,15 @@ const columns = [
   { field: 'recipient', header: 'Destinatario', type: 'recipient', sortable: true },
   { field: 'createdAt', header: 'Fecha de Envío', type: 'date', sortable: true },
   { field: 'priority', header: 'Prioridad', type: 'priority', sortable: true },
-  { field: 'status', header: 'Estado', type: 'status', sortable: true }
+  { 
+    field: 'status', 
+    header: 'Estado', 
+    type: 'status', 
+    sortable: true,
+    customBody: (rowData) => {
+      return getStatusText(rowData.status);
+    }
+  }
 ];
 
 const actions = [
@@ -75,6 +83,17 @@ const handleAction = async ({ action, item }) => {
   }
 };
 
+const getStatusText = (status) => {
+  const statusMap = {
+    'PENDING': 'No recibido',
+    'RECEIVED': 'Recibido',
+    'PROCESSED': 'Procesado',
+    'ARCHIVED': 'Archivado',
+    'CANCELLED': 'Cancelado'
+  };
+  return statusMap[status] || status;
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -99,5 +118,12 @@ onActivated(fetchSentItems);
   .sent-list {
     padding: 15px;
   }
+}
+</style>
+
+<style scoped>
+.status-no-recibido {
+  color: red;
+  font-weight: bold;
 }
 </style>
